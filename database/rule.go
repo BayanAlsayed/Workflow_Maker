@@ -1,0 +1,188 @@
+package database
+
+import (
+	"database/sql"
+	"fmt"
+)
+
+
+type Rule struct {
+	WF_RULE_ID           int    `json:"wf_rule_id"`
+	FROM_WF_STATUS_ID    int    `json:"from_wf_status_id"`
+	FROM_WF_STATUS_NAME  string `json:"from_wf_status_name"`
+	TO_WF_STATUS_ID      int    `json:"to_wf_status_id"`
+	TO_WF_STATUS_NAME    string `json:"to_wf_status_name"`
+	SE_CODE_USER_TYPE_ID *int    `json:"se_code_user_type_id"`
+	USER_TYPE_EN 		*string `json:"user_type_en"`
+	SE_ACCNT_ID          *int    `json:"se_accnt_id"`
+	ACCNT_EN		   *string `json:"accnt_en"`
+	ACTION_BUTTON        string `json:"action_button"`
+	ACTION_FUNCTION      *string `json:"action_function"`
+}
+
+func ViewRules(WF_ID int) ([]Rule, error) {
+	//select the newest version for the given workflow
+	newestVersion, err := getNewestVersion(WF_ID)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := db.Query(`
+			SELECT 
+				R.WF_RULE_ID,
+				R.FROM_STATUS_ID,
+				S.STATUS_NAME AS from_status_name,
+				R.TO_STATUS_ID,
+				T.STATUS_NAME AS to_status_name,
+				R.SE_CODE_USER_TYPE_ID,
+				UT.DESCR_EN    AS user_type_name,
+				R.SE_ACCNT_ID,
+				ACC.DESCR_EN   AS account_name,
+				R.ACTION_BUTTON,
+				R.ACTION_FUNCTION
+			FROM WF_RULE AS R
+			JOIN WF_STATUS AS S ON R.FROM_STATUS_ID = S.STATUS_ID AND R.WF_VERSION_ID = S.WF_VERSION_ID
+			JOIN WF_STATUS AS T ON R.TO_STATUS_ID   = T.STATUS_ID AND R.WF_VERSION_ID = T.WF_VERSION_ID
+			LEFT JOIN SE_CODE_USER_TYPE AS UT ON R.SE_CODE_USER_TYPE_ID = UT.SE_CODE_USER_TYPE_ID
+			LEFT JOIN SE_ACCNT AS ACC ON R.SE_ACCNT_ID = ACC.SE_ACCNT_ID
+			WHERE R.WF_VERSION_ID = ?
+	`, newestVersion)
+
+	if err != nil {
+		fmt.Println("Error fetching rules: ", err)
+
+		if err == sql.ErrNoRows {
+			return []Rule{}, nil // return empty slice if no rules found
+		} else {
+			return nil, err
+		}
+	}
+	defer rows.Close()
+
+	var rules []Rule
+	for rows.Next() {
+		var r Rule
+
+		var (
+			seCodeUserTypeID sql.NullInt64
+			userTypeEn       sql.NullString
+			seAccntID        sql.NullInt64
+			accntEn          sql.NullString
+			actionFunction   sql.NullString
+		)
+
+		if err := rows.Scan(
+			&r.WF_RULE_ID,
+			&r.FROM_WF_STATUS_ID,
+			&r.FROM_WF_STATUS_NAME,
+			&r.TO_WF_STATUS_ID,
+			&r.TO_WF_STATUS_NAME,
+			&seCodeUserTypeID,
+			&userTypeEn,
+			&seAccntID,
+			&accntEn,
+			&r.ACTION_BUTTON,
+			&actionFunction,
+		); err != nil {
+			return nil, err
+		}
+
+		// Handle nullable fields
+		if seCodeUserTypeID.Valid {
+			v := int(seCodeUserTypeID.Int64)
+			r.SE_CODE_USER_TYPE_ID = &v
+		}
+		if userTypeEn.Valid {
+			v := userTypeEn.String
+			r.USER_TYPE_EN = &v
+		}
+		if seAccntID.Valid {
+			v := int(seAccntID.Int64)
+			r.SE_ACCNT_ID = &v
+		}
+		if accntEn.Valid {
+			v := accntEn.String
+			r.ACCNT_EN = &v
+		}
+		if actionFunction.Valid {
+			v := actionFunction.String
+			r.ACTION_FUNCTION = &v
+		}
+
+		rules = append(rules, r)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return rules, nil
+}
+
+func AddRule(WF_ID int, FROM_WF_STATUS_SLICE []string, TO_WF_STATUS_SLICE []string, USER_TYPE_SLICE []string, ACCOUNT_SLICE []string, ACTION_BUTTON string, ACTION_FUNCTION string) error {
+	//select the newest version for the given workflow
+	newestVersion, err := getNewestVersion(WF_ID)
+	if err != nil {
+		fmt.Println("Error getting newest version: ", err)
+		return err
+	}
+
+	FROM_WF_STATUS_ID, err := getIDFromStringSlice(FROM_WF_STATUS_SLICE)
+	if err != nil {
+		fmt.Println("Error parsing FROM_WF_STATUS_SLICE : ", err)
+		return err
+	}
+	TO_WF_STATUS_ID, err := getIDFromStringSlice(TO_WF_STATUS_SLICE)
+	if err != nil {
+		fmt.Println("Error parsing TO_WF_STATUS_SLICE : ", err)
+		return err
+	}
+	USER_TYPE_ID, err := getIDFromStringSlice(USER_TYPE_SLICE)
+	if err != nil {
+		fmt.Println("Error parsing USER_TYPE_SLICE : ", err)
+		return err
+	}
+	ACCOUNT_ID, err := getIDFromStringSlice(ACCOUNT_SLICE)
+	if err != nil {
+		fmt.Println("Error parsing ACCOUNT_SLICE : ", err)
+		return err
+	}
+
+	ruleID, err := getNextRuleID(newestVersion)
+	if err != nil {
+		fmt.Println("Error getting next status ID: ", err)
+		return err
+	}
+
+	_, err = db.Exec(`
+		INSERT INTO WF_RULE (
+			RULE_ID,
+			WF_VERSION_ID,
+			FROM_STATUS_ID,
+			TO_STATUS_ID,
+			SE_CODE_USER_TYPE_ID,
+			SE_ACCNT_ID,
+			ACTION_BUTTON,
+			ACTION_FUNCTION
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+	`, ruleID, newestVersion, FROM_WF_STATUS_ID, TO_WF_STATUS_ID, USER_TYPE_ID, ACCOUNT_ID, ACTION_BUTTON, ACTION_FUNCTION)
+	if err != nil {
+		fmt.Println("Error inserting new rule: ", err)
+		return err
+	}
+	return nil
+}
+
+func getNextRuleID(WF_VERSION_ID int) (int, error) {
+	var nextID int
+	err := db.QueryRow(`
+		SELECT IFNULL(MAX(RULE_ID), 0) + 1 AS next_id
+		FROM WF_RULE
+		WHERE WF_VERSION_ID = ?
+	`, WF_VERSION_ID).Scan(&nextID)
+	if err != nil {
+		return 0, err
+	}
+	return nextID, nil
+}
+
