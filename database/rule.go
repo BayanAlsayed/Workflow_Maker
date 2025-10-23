@@ -8,10 +8,11 @@ import (
 
 type Rule struct {
 	WF_RULE_ID           int    `json:"wf_rule_id"`
-	FROM_WF_STATUS_ID    int    `json:"from_wf_status_id"`
-	FROM_WF_STATUS_NAME  string `json:"from_wf_status_name"`
-	TO_WF_STATUS_ID      int    `json:"to_wf_status_id"`
-	TO_WF_STATUS_NAME    string `json:"to_wf_status_name"`
+	RULE_ID			  int    `json:"rule_id"`
+	FROM_STATUS_ID    int    `json:"from_status_id"`
+	FROM_STATUS_NAME  string `json:"from_status_name"`
+	TO_STATUS_ID      int    `json:"to_status_id"`
+	TO_STATUS_NAME    string `json:"to_status_name"`
 	SE_CODE_USER_TYPE_ID *int    `json:"se_code_user_type_id"`
 	USER_TYPE_EN 		*string `json:"user_type_en"`
 	SE_ACCNT_ID          *int    `json:"se_accnt_id"`
@@ -30,6 +31,7 @@ func ViewRules(WF_ID int) ([]Rule, error) {
 	rows, err := db.Query(`
 			SELECT 
 				R.WF_RULE_ID,
+				R.RULE_ID,
 				R.FROM_STATUS_ID,
 				S.STATUS_NAME AS from_status_name,
 				R.TO_STATUS_ID,
@@ -73,10 +75,11 @@ func ViewRules(WF_ID int) ([]Rule, error) {
 
 		if err := rows.Scan(
 			&r.WF_RULE_ID,
-			&r.FROM_WF_STATUS_ID,
-			&r.FROM_WF_STATUS_NAME,
-			&r.TO_WF_STATUS_ID,
-			&r.TO_WF_STATUS_NAME,
+			&r.RULE_ID,
+			&r.FROM_STATUS_ID,
+			&r.FROM_STATUS_NAME,
+			&r.TO_STATUS_ID,
+			&r.TO_STATUS_NAME,
 			&seCodeUserTypeID,
 			&userTypeEn,
 			&seAccntID,
@@ -119,7 +122,7 @@ func ViewRules(WF_ID int) ([]Rule, error) {
 	return rules, nil
 }
 
-func AddRule(WF_ID int, FROM_WF_STATUS_SLICE []string, TO_WF_STATUS_SLICE []string, USER_TYPE_SLICE []string, ACCOUNT_SLICE []string, ACTION_BUTTON string, ACTION_FUNCTION string) error {
+func AddRule(WF_ID int, FROM_STATUS_SLICE []string, TO_STATUS_SLICE []string, USER_TYPE_SLICE []string, ACCOUNT_SLICE []string, ACTION_BUTTON string, ACTION_FUNCTION string) error {
 	//select the newest version for the given workflow
 	newestVersion, err := getNewestVersion(WF_ID)
 	if err != nil {
@@ -127,12 +130,12 @@ func AddRule(WF_ID int, FROM_WF_STATUS_SLICE []string, TO_WF_STATUS_SLICE []stri
 		return err
 	}
 
-	FROM_WF_STATUS_ID, err := getIDFromStringSlice(FROM_WF_STATUS_SLICE)
+	FROM_STATUS_ID, err := getIDFromStringSlice(FROM_STATUS_SLICE)
 	if err != nil {
 		fmt.Println("Error parsing FROM_WF_STATUS_SLICE : ", err)
 		return err
 	}
-	TO_WF_STATUS_ID, err := getIDFromStringSlice(TO_WF_STATUS_SLICE)
+	TO_STATUS_ID, err := getIDFromStringSlice(TO_STATUS_SLICE)
 	if err != nil {
 		fmt.Println("Error parsing TO_WF_STATUS_SLICE : ", err)
 		return err
@@ -165,7 +168,7 @@ func AddRule(WF_ID int, FROM_WF_STATUS_SLICE []string, TO_WF_STATUS_SLICE []stri
 			ACTION_BUTTON,
 			ACTION_FUNCTION
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-	`, ruleID, newestVersion, FROM_WF_STATUS_ID, TO_WF_STATUS_ID, USER_TYPE_ID, ACCOUNT_ID, ACTION_BUTTON, ACTION_FUNCTION)
+	`, ruleID, newestVersion, FROM_STATUS_ID, TO_STATUS_ID, USER_TYPE_ID, ACCOUNT_ID, ACTION_BUTTON, ACTION_FUNCTION)
 	if err != nil {
 		fmt.Println("Error inserting new rule: ", err)
 		return err

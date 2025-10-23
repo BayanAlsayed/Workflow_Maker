@@ -198,3 +198,28 @@ func getNextStatusID(WF_VERSION_ID int) (int, error) {
 	}
 	return nextID, nil
 }
+
+func UpdateStatus(status Status, workflowID int) error {
+	//select the newest version for the given workflow
+	newestVersion, err := getNewestVersion(workflowID)
+	if err != nil {
+		fmt.Println("Error getting newest version for workflow: ", workflowID, err)
+		return err
+	}
+
+	_, err = db.Exec(`
+		UPDATE WF_STATUS
+		SET
+			STATUS_NAME = ?,
+			ED_CODE_STATUS_ID = ?,
+			GS_CODE_REQ_STATUS_ID = ?,
+			IS_TERMINAL = ?,
+			SUCCESS_PATH = ?
+		WHERE WF_VERSION_ID = ? AND STATUS_ID = ?
+	`, status.STATUS_NAME, status.ED_CODE_STATUS_ID, status.GS_CODE_REQ_STATUS_ID, status.IS_TERMINAL, status.SUCCESS_PATH, newestVersion, status.STATUS_ID)
+	if err != nil {
+		fmt.Println("Error updating status: ", err)
+		return err
+	}
+	return nil
+}

@@ -60,6 +60,7 @@ func main() {
 	mux.HandleFunc("/lookups/", server.LookupsHandler)
 
 	mux.HandleFunc("/add_status", server.AddStatusHandler)
+	mux.HandleFunc("/edit_status", server.EditStatusHandler)
 
 	mux.HandleFunc("/add_rule", server.AddRuleHandler)
 

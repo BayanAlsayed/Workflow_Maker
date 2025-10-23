@@ -68,8 +68,8 @@ func AddRuleHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("rule to be added: " + string(bodyBytes))
 
 	type RuleInput struct {
-		FROM_WF_STATUS string `json:"from_wf_status"`
-		TO_WF_STATUS   string `json:"to_wf_status"`
+		FROM_STATUS string `json:"from_status"`
+		TO_STATUS   string `json:"to_status"`
 		SE_CODE_USER_TYPE      string `json:"se_code_user_type"`
 		SE_ACCNT        string `json:"se_accnt"`
 		ACTION_BUTTON     string `json:"action_button"`
@@ -90,12 +90,12 @@ func AddRuleHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var FROM_WF_STATUS_SLICE = strings.Split(input.FROM_WF_STATUS, "_")
-	var TO_WF_STATUS_SLICE = strings.Split(input.TO_WF_STATUS, "_")
+	var FROM_STATUS_SLICE = strings.Split(input.FROM_STATUS, "_")
+	var TO_STATUS_SLICE = strings.Split(input.TO_STATUS, "_")
 	var SE_CODE_USER_TYPE_SLICE = strings.Split(input.SE_CODE_USER_TYPE, "_")
 	var SE_ACCNT_SLICE = strings.Split(input.SE_ACCNT, "_")
 
-	err = database.AddRule(input.WF_ID, FROM_WF_STATUS_SLICE, TO_WF_STATUS_SLICE, SE_CODE_USER_TYPE_SLICE, SE_ACCNT_SLICE, input.ACTION_BUTTON, input.ACTION_FUNCTION)
+	err = database.AddRule(input.WF_ID, FROM_STATUS_SLICE, TO_STATUS_SLICE, SE_CODE_USER_TYPE_SLICE, SE_ACCNT_SLICE, input.ACTION_BUTTON, input.ACTION_FUNCTION)
 	if err != nil {
 		fmt.Println("Error adding rule:", err)
 		http.Error(w, "Failed to add rule", http.StatusInternalServerError)

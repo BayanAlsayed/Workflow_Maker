@@ -10,6 +10,7 @@ window.viewDetails = viewDetails;
 export function viewDetails(workflowID) {
   history.pushState({}, '', `?workflow=${workflowID}`);
 
+  console.log("Viewing details for workflow ID:", workflowID);
   const container = document.getElementById('rules_container');
   container.innerHTML = ''; // Clear previous content
   container.style.display = 'block';
@@ -49,7 +50,7 @@ export function viewDetails(workflowID) {
                 <td>${nullable(s.success_path)}</td>
                 <td>
                   <button class="icon-btn edit" type="button"
-                    onclick="event.stopPropagation(); editStatus(${s.status_id}, '${s.status_name}', ${s.ed_code_status_id}, '${s.ed_descr_en}', ${s.gs_code_req_status_id}, '${s.gs_descr_en}', ${s.is_terminal}, '${s.success_path}', ${s.success_path}, ${workflowID})"
+                    onclick="event.stopPropagation(); editStatus(${s.status_id}, '${s.status_name}', ${s.ed_code_status_id}, '${s.ed_descr_en}', ${s.gs_code_req_status_id}, '${s.gs_descr_en}', ${s.is_terminal}, ${s.success_path}, ${workflowID})"
                     title="Edit">
                     <i class="fa-solid fa-pen"></i>
                   </button>
@@ -85,23 +86,23 @@ export function viewDetails(workflowID) {
             ${!data.rules ? `
               <tr><td colspan="8">No rules found.</td></tr>
             ` : data.rules.map(r => `
-              <tr id="rule_row_${r.wf_rule_id}">
-                <td>${r.wf_rule_id}</td>
-                <td>${nullable(r.from_wf_status_name)}</td>
-                <td>${nullable(r.to_wf_status_name)}</td>
+              <tr id="rule_row_${r.rule_id}">
+                <td>${r.rule_id}</td>
+                <td>${nullable(r.from_status_name)}</td>
+                <td>${nullable(r.to_status_name)}</td>
                 <td>${nullable(r.user_type_en)}</td>
                 <td>${nullable(r.accnt_en)}</td>
                 <td>${escapeHtml(r.action_button || '')}</td>
                 <td>${escapeHtml(r.action_function || '')}</td>
                 <td>
                   <button class="icon-btn edit" type="button"
-                    onclick="event.stopPropagation(); editRule(${r.wf_rule_id}, ${workflowID})"
+                    onclick="event.stopPropagation(); editRule(${r.rule_id}, ${r.from_status_id}, '${r.from_status_name}', ${r.to_status_id}, '${r.to_status_name}', ${r.se_code_user_type_id}, '${r.user_type_en}', ${r.se_accnt_id}, '${r.accnt_en}', '${r.action_button}', '${r.action_function}', ${workflowID})"
                     title="Edit">
                     <i class="fa-solid fa-pen"></i>
                   </button>
 
                   <button class="icon-btn delete" type="button"
-                    onclick="event.stopPropagation(); deleteRule(${r.wf_rule_id}, ${workflowID})"
+                    onclick="event.stopPropagation(); deleteRule(${r.rule_id}, ${workflowID})"
                     title="Delete">
                     <i class="fa-solid fa-trash"></i>
                   </button>
@@ -151,10 +152,10 @@ export function viewDetails(workflowID) {
           <form id="add-rule-form" onsubmit="createRule(event, ${workflowID})">
             <div class="grid">
               <label>FROM STATUS
-                <input list="wf_statuses" name="from_wf_status" required placeholder="Search..." />
+                <input list="wf_statuses" name="from_status" required placeholder="Search..." />
               </label>
               <label>TO STATUS
-                <input list="wf_statuses" name="to_wf_status" required placeholder="Search..." />
+                <input list="wf_statuses" name="to_status" required placeholder="Search..." />
               </label>
               <datalist id="wf_statuses"></datalist>
 
@@ -219,7 +220,7 @@ export function viewDetails(workflowID) {
         // WF statuses (from/to for rules)
         if (lookups.workflow_statuses) {
             document.getElementById('wf_statuses').innerHTML =
-            lookups.workflow_statuses.map(s => `<option value="${s.wf_status_id}_${escapeHtml(s.status_name)}">${s.wf_status_id}_${escapeHtml(s.status_name)}</option>`).join('');
+            lookups.workflow_statuses.map(s => `<option value="${s.status_id}_${escapeHtml(s.status_name)}">${s.status_id}_${escapeHtml(s.status_name)}</option>`).join('');
             WF_STATUSES = lookups.workflow_statuses;
         }
     })

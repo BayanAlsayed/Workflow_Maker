@@ -35,6 +35,8 @@ export function createStatus(e, workflowID) {
 
 window.editStatus = editStatus;
 export function editStatus(statusID, statusName, edID, ED_DESCR_EN, gsID, GS_DESCR_EN, isTerminal, successPath, workflowID) {
+  console.log("edit status for workflow ID:", workflowID);
+
   const row = document.getElementById(`status_row_${statusID}`);
   if (!row) return;
 
@@ -48,15 +50,21 @@ export function editStatus(statusID, statusName, edID, ED_DESCR_EN, gsID, GS_DES
   const edCodeValue = edID ? `${edID}_${ED_DESCR_EN || ''}` : '';
   const gsCodeValue = gsID ? `${gsID}_${GS_DESCR_EN || ''}` : '';
 
+  const formId = `edit_status_form_${statusID}`;
   row.innerHTML = `
+    <!-- hidden form element to own the inputs -->
+    <form id="${formId}" style="display:none"></form>
+
     <td>${statusID}</td>
-    <td><input type="text" name="status_name" value="${escapeHtml(statusName || '')}" required /></td>
+    <td><input form="${formId}" type="text" name="status_name"
+              value="${escapeHtml(statusName || '')}" required></td>
 
     <td>
       <label>ED_CODE_STATUS_CAT
-        <input list="${edCatListId}" id="${edCatInputId}" name="ed_code_status_cat_id"
-               placeholder="Search..." value="${escapeHtml(edCatValue)}"
-               onchange="updateEdCodesByIds('${edCatInputId}', '${edCodesListId}')" />
+        <input form="${formId}" list="${edCatListId}" id="${edCatInputId}"
+              name="ed_code_status_cat_id" placeholder="Search..."
+              value="${escapeHtml(edCatValue)}"
+              onchange="updateEdCodesByIds('${edCatInputId}', '${edCodesListId}')">
         <datalist id="${edCatListId}">
           ${ED_CODE_STATUS_CAT.map(o =>
             `<option value="${o.ed_code_status_cat_id}_${escapeHtml(o.descr_en)}">${o.ed_code_status_cat_id}_${escapeHtml(o.descr_en)}</option>`
@@ -65,7 +73,8 @@ export function editStatus(statusID, statusName, edID, ED_DESCR_EN, gsID, GS_DES
       </label>
 
       <label>ED_CODE_STATUS
-        <input list="${edCodesListId}" name="ed_code_status_id" placeholder="Search..." value="${escapeHtml(edCodeValue)}" />
+        <input form="${formId}" list="${edCodesListId}" name="ed_code_status_id"
+              placeholder="Search..." value="${escapeHtml(edCodeValue)}">
         <datalist id="${edCodesListId}">
           ${ED_CODE_STATUS.filter(o => isEdinCatByInputId(o, edCatInputId)).map(o =>
             `<option value="${o.ed_code_status_id}_${escapeHtml(o.descr_en)}">${o.ed_code_status_id}_${escapeHtml(o.descr_en)}</option>`
@@ -75,7 +84,8 @@ export function editStatus(statusID, statusName, edID, ED_DESCR_EN, gsID, GS_DES
     </td>
 
     <td>
-      <input list="${gsCodesListId}" name="gs_code_req_status_id" placeholder="Search..." value="${escapeHtml(gsCodeValue)}" />
+      <input form="${formId}" list="${gsCodesListId}" name="gs_code_req_status_id"
+            placeholder="Search..." value="${escapeHtml(gsCodeValue)}">
       <datalist id="${gsCodesListId}">
         ${GS_CODE_REQ_STATUS.map(o =>
           `<option value="${o.gs_code_req_status_id}_${escapeHtml(o.descr_en)}">${o.gs_code_req_status_id}_${escapeHtml(o.descr_en)}</option>`
@@ -84,21 +94,23 @@ export function editStatus(statusID, statusName, edID, ED_DESCR_EN, gsID, GS_DES
     </td>
 
     <td>
-      <select name="is_terminal">
+      <select form="${formId}" name="is_terminal">
         <option value="0" ${isTerminal ? '' : 'selected'}>No</option>
         <option value="1" ${isTerminal ? 'selected' : ''}>Yes</option>
       </select>
     </td>
 
-    <td><input type="number" name="success_path" placeholder="optional" value="${successPath == null ? '' : String(successPath)}" /></td>
+    <td>
+      <input form="${formId}" type="number" name="success_path"
+            placeholder="optional" value="${successPath == null ? '' : String(successPath)}">
+    </td>
 
     <td>
       <button class="icon-btn save" type="button"
-              onclick="event.stopPropagation(); saveStatus(${statusID}, ${workflowID}, '${edCatInputId}', '${edCodesListId}', '${gsCodesListId}')"
+              onclick="event.stopPropagation(); saveStatus(${statusID}, ${workflowID})"
               title="Save">
         <i class="fa-solid fa-check"></i>
       </button>
-
       <button class="icon-btn cancel" type="button"
               onclick="event.stopPropagation(); cancelStatusEdit(${statusID}, '${escapeHtml(statusName || '')}', ${edID ?? 'null'}, '${escapeHtml(ED_DESCR_EN || '')}', ${gsID ?? 'null'}, '${escapeHtml(GS_DESCR_EN || '')}', ${isTerminal ? 1 : 0}, ${successPath == null ? 'null' : Number(successPath)}, ${workflowID})"
               title="Cancel">
@@ -106,7 +118,62 @@ export function editStatus(statusID, statusName, edID, ED_DESCR_EN, gsID, GS_DES
       </button>
     </td>
   `;
+
 }
+
+window.saveStatus = saveStatus;
+export function saveStatus(statusID, workflowID) {
+  console.log("save status for workflow ID:", workflowID);
+
+  const form = document.getElementById('edit_status_form_' + statusID);
+  if (!form) return console.error('edit_status_form not found');
+
+  const formData = new FormData(form);
+  const edRaw = formData.get('ed_code_status_id');
+  const gsRaw = formData.get('gs_code_req_status_id');
+
+  console.log('formData:', Object.fromEntries(formData.entries()));
+
+
+  if ((!edRaw && !gsRaw) || (edRaw && gsRaw)) {
+    alert("Please select either an ED Code Status or a GS Code Request Status.");
+    return;
+  }
+
+  const idFromCombo = (v) => {
+    if (!v) return '';
+    const [id] = String(v).split('_', 1);
+    return id;
+  };
+
+  // Build query parameters for GET
+  const params = new URLSearchParams({
+    workflow_id: workflowID,
+    status_id: statusID,
+    status_name: formData.get('status_name') || '',
+    ed_code_status_id: idFromCombo(edRaw),
+    gs_code_req_status_id: idFromCombo(gsRaw),
+    is_terminal: formData.get('is_terminal') || '0',
+    success_path: formData.get('success_path') || '',
+  });
+
+  fetch(`/edit_status?${params.toString()}`, {
+    method: 'GET',
+    headers: { 'Cache-Control': 'no-cache' },
+  })
+    .then(response => {
+      if (!response.ok) throw new Error("Failed to update status");
+      return response.json();
+    })
+    .then(() => {
+      console.log("Status updated:", statusID);
+      // refresh only the workflow details, not full reload
+      const wfid = new URLSearchParams(window.location.search).get('workflow');
+      if (wfid) window.viewDetails(wfid);
+    })
+    .catch(error => console.error("Error updating status:", error));
+}
+
 
 window.cancelStatusEdit = cancelStatusEdit;
 export function cancelStatusEdit(statusID, statusName, edID, ED_DESCR_EN, gsID, GS_DESCR_EN, isTerminal, successPath, workflowID) {

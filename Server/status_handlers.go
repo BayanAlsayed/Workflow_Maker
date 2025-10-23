@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 
 	database "workflow/database"
@@ -57,7 +58,6 @@ func AddStatusHandler(w http.ResponseWriter, r *http.Request) {
 	var ED_CODE_STATUS = strings.Split(input.ED_CODE_STATUS_ID, "_")
 	var GS_CODE_REQ_STATUS = strings.Split(input.GS_CODE_REQ_STATUS_ID, "_")
 
-
 	// {"status_name":"new","ed_code_status_cat_id":"","ed_code_status_id":"","gs_code_req_status_id":"1_New","is_terminal":"0","success_path":"","workflow_id":5}
 
 	err = database.AddStatus(input.WF_ID, input.STATUS_NAME, input.IS_TERMINAL, input.SUCCESS_PATH, ED_CODE_STATUS_CAT, ED_CODE_STATUS, GS_CODE_REQ_STATUS)
@@ -66,4 +66,67 @@ func AddStatusHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to add status", http.StatusInternalServerError)
 		return
 	}
+}
+
+func EditStatusHandler(w http.ResponseWriter, r *http.Request) {
+	// Only allow GET (as you designed)
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Parse query params
+	q := r.URL.Query()
+
+	workflowID, _ := strconv.Atoi(q.Get("workflow_id"))
+	statusID, _ := strconv.Atoi(q.Get("status_id"))
+	statusName := q.Get("status_name")
+
+	edCodeStr := q.Get("ed_code_status_id")
+	gsCodeStr := q.Get("gs_code_req_status_id")
+	isTerminalStr := q.Get("is_terminal")
+	successPathStr := q.Get("success_path")
+
+	var (
+		edCodeID, gsCodeID, successPath *int
+		isTerminal                      bool
+	)
+
+	// Parse optional integers safely
+	if v, err := strconv.Atoi(edCodeStr); err == nil {
+		edCodeID = &v
+	}
+	if v, err := strconv.Atoi(gsCodeStr); err == nil {
+		gsCodeID = &v
+	}
+	if v, err := strconv.Atoi(successPathStr); err == nil {
+		successPath = &v
+	}
+
+	// Parse boolean from "0"/"1"
+	isTerminal = isTerminalStr == "1"
+
+	fmt.Printf("Received edit status:\n"+
+		"WF_ID=%d | STATUS_ID=%d | STATUS_NAME=%s | ED=%v | GS=%v | TERMINAL=%v | PATH=%v\n",
+		workflowID, statusID, statusName, edCodeID, gsCodeID, isTerminal, successPath)
+
+	// TODO: Update in DB
+	err := database.UpdateStatus(database.Status{
+		STATUS_ID:          statusID,
+		STATUS_NAME:       statusName,
+		ED_CODE_STATUS_ID: edCodeID,
+		GS_CODE_REQ_STATUS_ID: gsCodeID,
+		IS_TERMINAL:       isTerminal,
+		SUCCESS_PATH:      successPath,
+	}, workflowID)
+
+	if err != nil {
+		http.Error(w, "Failed to update status", http.StatusInternalServerError)
+		return
+	}
+
+	// Respond JSON success
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"success": true}`))
+
 }
