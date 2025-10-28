@@ -1,4 +1,4 @@
-import { WF_STATUSES } from "./details.js";
+import { WF_STATUSES, SE_CODE_USER_TYPE, SE_ACCNT, setUserType } from "./details.js";
 import { escapeHtml, nullable } from "../helpers.js";
 
 window.createRule = createRule;
@@ -76,15 +76,28 @@ export function editRule(rule_id, from_status_id, from_status_name, to_status_id
       </td>
 
       <td>
-        <input form="${formId}" list="user_types" name="se_code_user_type_id" 
+        <input form="${formId}" list="user_types" name="se_code_user_type"
+        id="se_code_user_type_edit_${rule_id}"
         placeholder="Search..." 
-        value="${se_code_user_type_id ? `${se_code_user_type_id}_${escapeHtml(user_type_en || '')}` : ''}">
+        value="${se_code_user_type_id ? `${se_code_user_type_id}_${escapeHtml(user_type_en || '')}` : ''}"
+        required>
+        <datalist id="user_types">
+          ${SE_CODE_USER_TYPE.map(ut =>
+            `<option value="${ut.se_code_user_type_id}_${escapeHtml(ut.descr_en)}">${ut.se_code_user_type_id}_${escapeHtml(ut.descr_en)}</option>`
+          ).join('')}
+        </datalist>
       </td>
 
       <td>
-        <input form="${formId}" list="accnts" name="se_accnt_id" 
+        <input form="${formId}" list="accnts" name="se_accnt" 
         placeholder="Search..." 
-        value="${se_accnt_id ? `${se_accnt_id}_${escapeHtml(accnt_en || '')}` : ''}">
+        value="${se_accnt_id ? `${se_accnt_id}_${escapeHtml(accnt_en || '')}` : ''}"
+        onchange="setUserType(this, 'se_code_user_type_edit_${rule_id}')" >
+        <datalist id="accnts">
+          ${SE_ACCNT.map(acct =>
+            `<option value="${acct.se_accnt_id}_${escapeHtml(acct.descr_en)}">${acct.se_accnt_id}_${escapeHtml(acct.descr_en)}</option>`
+          ).join('')}
+        </datalist>
       </td>
 
       <td>
@@ -104,7 +117,7 @@ export function editRule(rule_id, from_status_id, from_status_name, to_status_id
           <i class="fa-solid fa-check"></i>
         </button>
         <button class="icon-btn cancel" type="button"
-                onclick="event.stopPropagation(); cancelRuleEdit(${rule_id}, '${escapeHtml(statusName || '')}', ${edID ?? 'null'}, '${escapeHtml(ED_DESCR_EN || '')}', ${gsID ?? 'null'}, '${escapeHtml(GS_DESCR_EN || '')}', ${isTerminal ? 1 : 0}, ${successPath == null ? 'null' : Number(successPath)}, ${workflowID})"
+                onclick="event.stopPropagation(); cancelRuleEdit()"
                 title="Cancel">
           <i class="fa-solid fa-xmark"></i>
         </button>
@@ -119,9 +132,52 @@ export function deleteRule(){
 }
 
 window.saveRule = saveRule;
-export function saveRule(){
+export function saveRule(rule_id, workflowID){
+  console.log("save rule for workflow ID:", workflowID);
 
+  const form = document.getElementById('edit_rule_form_' + rule_id);
+  if (!form) return console.error('edit_rule_form not found');
+
+  const formData = new FormData(form);
+  console.log('formData:', Object.fromEntries(formData.entries()));
+
+  const idFromCombo = (v) => {
+    if (!v) return '';
+    const [id] = String(v).split('_', 1);
+    return id;
+  };
+
+  const params = new URLSearchParams({
+    workflow_id: workflowID,
+    rule_id: rule_id,
+    from_status_id: idFromCombo(formData.get('from_status_id')),
+    to_status_id: idFromCombo(formData.get('to_status_id')),
+    se_code_user_type_id: idFromCombo(formData.get('se_code_user_type')),
+    se_accnt_id: idFromCombo(formData.get('se_accnt')),
+    action_button: formData.get('action_button'),
+    action_function: nullable(formData.get('action_function')),
+  });
+
+  console.log('Saving rule with params:', params.toString());
+
+  fetch(`/edit_rule?${params.toString()}`, {
+    method: 'GET',
+    headers: { 'Cache-Control': 'no-cache' },
+  })
+    .then(response => {
+      if (!response.ok) throw new Error("Failed to update rule");
+      return response.json();
+    })
+    .then(() => {
+      console.log("Rule updated:", rule_id);
+      // refresh only the workflow details, not full reload
+      const wfid = new URLSearchParams(window.location.search).get('workflow');
+      if (wfid) window.viewDetails(wfid);
+    })
+    .catch(error => console.error("Error updating rule:", error));
 }
+
+
 
 window.cancelRuleEdit = cancelRuleEdit;
 export function cancelRuleEdit(){

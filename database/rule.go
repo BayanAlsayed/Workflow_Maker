@@ -5,19 +5,18 @@ import (
 	"fmt"
 )
 
-
 type Rule struct {
-	WF_RULE_ID           int    `json:"wf_rule_id"`
-	RULE_ID			  int    `json:"rule_id"`
-	FROM_STATUS_ID    int    `json:"from_status_id"`
-	FROM_STATUS_NAME  string `json:"from_status_name"`
-	TO_STATUS_ID      int    `json:"to_status_id"`
-	TO_STATUS_NAME    string `json:"to_status_name"`
-	SE_CODE_USER_TYPE_ID *int    `json:"se_code_user_type_id"`
-	USER_TYPE_EN 		*string `json:"user_type_en"`
+	WF_RULE_ID           int     `json:"wf_rule_id"`
+	RULE_ID              int     `json:"rule_id"`
+	FROM_STATUS_ID       int     `json:"from_status_id"`
+	FROM_STATUS_NAME     string  `json:"from_status_name"`
+	TO_STATUS_ID         int     `json:"to_status_id"`
+	TO_STATUS_NAME       string  `json:"to_status_name"`
+	SE_CODE_USER_TYPE_ID int     `json:"se_code_user_type_id"`
+	USER_TYPE_EN         *string `json:"user_type_en"`
 	SE_ACCNT_ID          *int    `json:"se_accnt_id"`
-	ACCNT_EN		   *string `json:"accnt_en"`
-	ACTION_BUTTON        string `json:"action_button"`
+	ACCNT_EN             *string `json:"accnt_en"`
+	ACTION_BUTTON        string  `json:"action_button"`
 	ACTION_FUNCTION      *string `json:"action_function"`
 }
 
@@ -66,11 +65,10 @@ func ViewRules(WF_ID int) ([]Rule, error) {
 		var r Rule
 
 		var (
-			seCodeUserTypeID sql.NullInt64
-			userTypeEn       sql.NullString
-			seAccntID        sql.NullInt64
-			accntEn          sql.NullString
-			actionFunction   sql.NullString
+			userTypeEn     sql.NullString
+			seAccntID      sql.NullInt64
+			accntEn        sql.NullString
+			actionFunction sql.NullString
 		)
 
 		if err := rows.Scan(
@@ -80,8 +78,8 @@ func ViewRules(WF_ID int) ([]Rule, error) {
 			&r.FROM_STATUS_NAME,
 			&r.TO_STATUS_ID,
 			&r.TO_STATUS_NAME,
-			&seCodeUserTypeID,
-			&userTypeEn,
+			&r.SE_CODE_USER_TYPE_ID,
+			&r.USER_TYPE_EN,
 			&seAccntID,
 			&accntEn,
 			&r.ACTION_BUTTON,
@@ -91,10 +89,6 @@ func ViewRules(WF_ID int) ([]Rule, error) {
 		}
 
 		// Handle nullable fields
-		if seCodeUserTypeID.Valid {
-			v := int(seCodeUserTypeID.Int64)
-			r.SE_CODE_USER_TYPE_ID = &v
-		}
 		if userTypeEn.Valid {
 			v := userTypeEn.String
 			r.USER_TYPE_EN = &v
@@ -175,6 +169,40 @@ func AddRule(WF_ID int, FROM_STATUS_SLICE []string, TO_STATUS_SLICE []string, US
 	}
 	return nil
 }
+func strPtr(s string) *string {
+	return &s
+}
+
+func UpdateRule(rule Rule, WorkflowID int) error {
+	//select the newest version for the given workflow
+	newestVersion, err := getNewestVersion(WorkflowID)
+	if err != nil {
+		fmt.Println("Error getting newest version: ", err)
+		return err
+	}
+
+	fmt.Println("updated rule:", rule)
+
+	if rule.ACTION_FUNCTION == nil {
+		rule.ACTION_FUNCTION = strPtr("")
+	}
+	_, err = db.Exec(`
+		UPDATE WF_RULE
+		SET
+			FROM_STATUS_ID = ?,
+			TO_STATUS_ID = ?,
+			SE_CODE_USER_TYPE_ID = ?,
+			SE_ACCNT_ID = ?,
+			ACTION_BUTTON = ?,
+			ACTION_FUNCTION = ?
+		WHERE WF_VERSION_ID = ? AND RULE_ID = ?
+	`, rule.FROM_STATUS_ID, rule.TO_STATUS_ID, rule.SE_CODE_USER_TYPE_ID, rule.SE_ACCNT_ID, rule.ACTION_BUTTON, rule.ACTION_FUNCTION, newestVersion, rule.RULE_ID)
+	if err != nil {
+		fmt.Println("Error updating rule: ", err)
+		return err
+	}
+	return nil
+}
 
 func getNextRuleID(WF_VERSION_ID int) (int, error) {
 	var nextID int
@@ -188,4 +216,3 @@ func getNextRuleID(WF_VERSION_ID int) (int, error) {
 	}
 	return nextID, nil
 }
-

@@ -160,12 +160,12 @@ export function viewDetails(workflowID) {
               <datalist id="wf_statuses"></datalist>
 
               <label>USER TYPE
-                <input list="user_types" name="se_code_user_type" placeholder="Search..." />
+                <input list="user_types" name="se_code_user_type" id="se_code_user_type" placeholder="Search..." />
                 <datalist id="user_types"></datalist>
               </label>
 
               <label>ACCOUNT
-                <input list="accounts" name="se_accnt" placeholder="Search..." onchange="setUserType(this)" />
+                <input list="accounts" name="se_accnt" placeholder="Search..." onchange="setUserType(this, 'se_code_user_type')" />
                 <datalist id="accounts"></datalist>
               </label>
 
@@ -231,9 +231,11 @@ export function viewDetails(workflowID) {
 }
 
 window.setUserType = setUserType;
-export function setUserType(accountInput) {
+export function setUserType(accountInput, userTypeInputId) {
   const accountValue = accountInput.value;
-  const userTypeInput = accountInput.form.querySelector('input[name="se_code_user_type"]');
+  console.log("Account selected:", accountValue);
+  const userTypeInput = document.getElementById(userTypeInputId);
+  console.log("User Type input found:", userTypeInput);
 
   const accountId = accountValue.split('_')[0];
   const account = SE_ACCNT.find(acc => String(acc.se_accnt_id) === accountId);

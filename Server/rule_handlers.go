@@ -104,6 +104,55 @@ func AddRuleHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func EditRuleHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("EditRuleHandler called")
+
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Parse query params
+	q := r.URL.Query()
+
+	workflowID, _ := strconv.Atoi(q.Get("workflow_id"))
+	ruleID, _ := strconv.Atoi(q.Get("rule_id"))
+	fromStatusId, _ := strconv.Atoi(q.Get("from_status_id"))
+	toStatusId, _ := strconv.Atoi(q.Get("to_status_id"))
+	seCodeUserType, _ := strconv.Atoi(q.Get("se_code_user_type_id"))
+	seAccntSTR := q.Get("se_accnt_id")
+	actionButton := q.Get("action_button")
+	var actionFunction *string
+	if v := q.Get("action_function"); v != "" {
+		actionFunction = &v
+	}
+
+	var seAccntID *int
+	if v, err := strconv.Atoi(seAccntSTR); err == nil {
+		seAccntID = &v
+	}
+
+	err := database.UpdateRule(database.Rule{
+		RULE_ID:         ruleID,
+		FROM_STATUS_ID:   fromStatusId,
+		TO_STATUS_ID:     toStatusId,
+		SE_CODE_USER_TYPE_ID: seCodeUserType,
+		SE_ACCNT_ID:      seAccntID,
+		ACTION_BUTTON:   actionButton,
+		ACTION_FUNCTION: actionFunction,
+	}, workflowID)
+
+	if err != nil {
+		fmt.Println("Error updating rule:", err)
+		http.Error(w, "Failed to update rule", http.StatusInternalServerError)
+		return
+	}
+
+	// Respond JSON success
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"success": true}`))
+}
+
 func LookupsHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
