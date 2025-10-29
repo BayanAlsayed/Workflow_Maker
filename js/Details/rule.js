@@ -40,9 +40,6 @@ export function editRule(rule_id, from_status_id, from_status_name, to_status_id
     // per-row unique ids (avoid clashes if multiple edits)
     const fromStatusListId  = `from_status_edit_${rule_id}`;
     const toStatusListId    = `to_status_edit_${rule_id}`;
-    const edCatListId       = `ed_codes_cat_edit_${rule_id}`;
-    const edCodesListId     = `ed_codes_edit_${rule_id}`;
-    const gsCodesListId     = `gs_codes_${rule_id}`;
 
     const fromStatusValue = from_status_id ? `${from_status_id}_${from_status_name || ''}` : '';
     const toStatusValue = to_status_id ? `${to_status_id}_${to_status_name || ''}` : '';
@@ -117,7 +114,7 @@ export function editRule(rule_id, from_status_id, from_status_name, to_status_id
           <i class="fa-solid fa-check"></i>
         </button>
         <button class="icon-btn cancel" type="button"
-                onclick="event.stopPropagation(); cancelRuleEdit()"
+                onclick="event.stopPropagation(); cancelRuleEdit(${rule_id}, '${from_status_id}', '${escapeHtml(from_status_name || '')}', '${to_status_id}', '${escapeHtml(to_status_name || '')}', '${se_code_user_type_id}', '${escapeHtml(user_type_en || '')}', '${se_accnt_id}', '${escapeHtml(accnt_en || '')}', '${escapeHtml(action_button || '')}', '${escapeHtml(action_function || '')}', ${workflowID})"
                 title="Cancel">
           <i class="fa-solid fa-xmark"></i>
         </button>
@@ -180,8 +177,34 @@ export function saveRule(rule_id, workflowID){
 
 
 window.cancelRuleEdit = cancelRuleEdit;
-export function cancelRuleEdit(){
+export function cancelRuleEdit(rule_id, from_status_id, from_status_name, to_status_id, to_status_name, se_code_user_type_id, user_type_en, se_accnt_id, accnt_en, action_button, action_function, workflowID){
+  console.log("cancel rule edit for workflow ID:", workflowID);
 
+  const row = document.getElementById(`rule_row_${rule_id}`);
+  if (!row) return;
+
+  row.innerHTML = `
+    <td>${rule_id}</td>
+    <td>${nullable(from_status_name)}</td>
+    <td>${nullable(to_status_name)}</td>
+    <td>${nullable(user_type_en)}</td>
+    <td>${nullable(accnt_en)}</td>
+    <td>${escapeHtml(action_button || '')}</td>
+    <td>${escapeHtml(action_function || '')}</td>
+    <td>
+      <button class="icon-btn edit" type="button"
+        onclick="event.stopPropagation(); editRule(${rule_id}, ${from_status_id}, '${from_status_name}', ${to_status_id}, '${to_status_name}', ${se_code_user_type_id}, '${user_type_en}', ${se_accnt_id}, '${accnt_en}', '${action_button}', '${action_function}', ${workflowID})"
+        title="Edit">
+        <i class="fa-solid fa-pen"></i>
+      </button>
+
+      <button class="icon-btn delete" type="button"
+        onclick="event.stopPropagation(); deleteRule(${rule_id}, ${workflowID})"
+        title="Delete">
+        <i class="fa-solid fa-trash"></i>
+      </button>
+    </td>
+  `;
 }
 
 
