@@ -204,6 +204,23 @@ func UpdateRule(rule Rule, WorkflowID int) error {
 	return nil
 }
 
+func DeleteRule(ruleID int, workflowID int) error {
+	newestVersion, err := getNewestVersion(workflowID)
+	if err != nil {
+		fmt.Println("Error getting newest version: ", err)
+		return err
+	}
+	_, err = db.Exec(`
+		DELETE FROM WF_RULE
+		WHERE RULE_ID = ? AND WF_VERSION_ID = ?
+	`, ruleID, newestVersion)
+	if err != nil {
+		fmt.Println("Error deleting rule: ", err)
+		return err
+	}
+	return nil
+}
+
 func getNextRuleID(WF_VERSION_ID int) (int, error) {
 	var nextID int
 	err := db.QueryRow(`

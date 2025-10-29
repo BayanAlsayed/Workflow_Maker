@@ -203,6 +203,26 @@ export function cancelStatusEdit(statusID, statusName, edID, ED_DESCR_EN, gsID, 
   `;
 }
 
+window.deleteStatus = deleteStatus;
+export function deleteStatus(statusID, workflowID) {
+  if (!confirm("Are you sure you want to delete this status?")) return;
+
+  fetch(`/delete_status?status_id=${statusID}&workflow_id=${workflowID}`)
+  .then(response => {
+      if (response.ok) {
+        console.log("Status deleted:", statusID);
+        // refresh only the workflow details, not full reload
+        const wfid = new URLSearchParams(window.location.search).get('workflow');
+        if (wfid) window.viewDetails(wfid);
+      
+      } else {
+        console.error("Failed to delete status:", statusID);
+      }
+    })
+    .catch(error => {
+      console.error("Error deleting status:", error);
+    });
+}
 // ---------- helpers ----------
 window.getCat = getCat;
 export function getCat(edCodeStatusId) {

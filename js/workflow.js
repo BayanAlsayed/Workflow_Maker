@@ -1,5 +1,7 @@
 window.deleteWorkflow = deleteWorkflow;
 export function deleteWorkflow(workflowID) {
+  if (!confirm("Are you sure you want to delete this workflow?")) return;
+
   // Implement delete functionality here
   fetch(`/delete_workflow?Workflow_ID=${workflowID}`)
   .then(response => {

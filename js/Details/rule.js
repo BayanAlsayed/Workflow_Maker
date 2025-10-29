@@ -124,8 +124,23 @@ export function editRule(rule_id, from_status_id, from_status_name, to_status_id
 }
 
 window.deleteRule = deleteRule;
-export function deleteRule(){
+export function deleteRule(rule_id, workflowID) {
+  if (!confirm("Are you sure you want to delete this rule?")) return;
 
+  fetch(`/delete_rule?rule_id=${rule_id}&workflow_id=${workflowID}`)
+    .then(response => {
+      if (response.ok) {
+        console.log("Rule deleted:", rule_id);
+        // refresh only the workflow details, not full reload
+        const wfid = new URLSearchParams(window.location.search).get('workflow');
+        if (wfid) window.viewDetails(wfid);
+      } else {
+        console.error("Failed to delete rule:", rule_id);
+      }
+    })
+    .catch(error => {
+      console.error("Error deleting rule:", error);
+    });
 }
 
 window.saveRule = saveRule;

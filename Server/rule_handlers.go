@@ -153,6 +153,32 @@ func EditRuleHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`{"success": true}`))
 }
 
+func DeleteRuleHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("DeleteRuleHandler called")
+	
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	q := r.URL.Query()
+
+	workflowID, _ := strconv.Atoi(q.Get("workflow_id"))
+	ruleID, _ := strconv.Atoi(q.Get("rule_id"))
+
+	err := database.DeleteRule(ruleID, workflowID)
+	if err != nil {
+		fmt.Println("Error deleting rule:", err)
+		http.Error(w, "Failed to delete rule", http.StatusInternalServerError)
+		return
+	}
+
+	// Respond JSON success
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"success": true}`))
+}
+
+
 func LookupsHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)

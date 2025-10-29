@@ -130,3 +130,28 @@ func EditStatusHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`{"success": true}`))
 
 }
+
+func DeleteStatusHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("DeleteStatusHandler called")
+
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	q := r.URL.Query()
+
+	workflowID, _ := strconv.Atoi(q.Get("workflow_id"))
+	statusID, _ := strconv.Atoi(q.Get("status_id"))
+
+	err := database.DeleteStatus(statusID, workflowID)
+	if err != nil {
+		fmt.Println("Error deleting status:", err)
+		http.Error(w, "Failed to delete status", http.StatusInternalServerError)
+		return
+	}
+
+	// Respond JSON success
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"success": true}`))
+}

@@ -61,9 +61,11 @@ func main() {
 
 	mux.HandleFunc("/add_status", server.AddStatusHandler)
 	mux.HandleFunc("/edit_status", server.EditStatusHandler)
+	mux.HandleFunc("/delete_status", server.DeleteStatusHandler)
 
 	mux.HandleFunc("/add_rule", server.AddRuleHandler)
 	mux.HandleFunc("/edit_rule", server.EditRuleHandler)
+	mux.HandleFunc("/delete_rule", server.DeleteRuleHandler)
 
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static/"))))
 	mux.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("./js/"))))

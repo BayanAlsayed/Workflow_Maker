@@ -223,3 +223,21 @@ func UpdateStatus(status Status, workflowID int) error {
 	}
 	return nil
 }
+
+func DeleteStatus(statusID int, workflowID int) error {
+	newestVersion, err := getNewestVersion(workflowID)
+	if err != nil {
+		fmt.Println("Error getting newest version: ", err)
+		return err
+	}
+
+	_, err = db.Exec(`
+		DELETE FROM WF_STATUS
+		WHERE STATUS_ID = ? AND WF_VERSION_ID = ?
+	`, statusID, newestVersion)
+	if err != nil {
+		fmt.Println("Error deleting status: ", err)
+		return err
+	}
+	return nil
+}
