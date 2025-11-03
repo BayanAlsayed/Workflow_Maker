@@ -36,6 +36,7 @@ func AddStatusHandler(w http.ResponseWriter, r *http.Request) {
 		IS_TERMINAL           string `json:"is_terminal"`
 		SUCCESS_PATH          string `json:"success_path"`
 		WF_ID                 int    `json:"workflow_id"`
+		VERSION               int    `json:"version"`
 	}
 
 	var input StatusInput
@@ -60,7 +61,7 @@ func AddStatusHandler(w http.ResponseWriter, r *http.Request) {
 
 	// {"status_name":"new","ed_code_status_cat_id":"","ed_code_status_id":"","gs_code_req_status_id":"1_New","is_terminal":"0","success_path":"","workflow_id":5}
 
-	err = database.AddStatus(input.WF_ID, input.STATUS_NAME, input.IS_TERMINAL, input.SUCCESS_PATH, ED_CODE_STATUS_CAT, ED_CODE_STATUS, GS_CODE_REQ_STATUS)
+	err = database.AddStatus(input.WF_ID, input.VERSION, input.STATUS_NAME, input.IS_TERMINAL, input.SUCCESS_PATH, ED_CODE_STATUS_CAT, ED_CODE_STATUS, GS_CODE_REQ_STATUS)
 	if err != nil {
 		fmt.Println("Error adding status:", err)
 		http.Error(w, "Failed to add status", http.StatusInternalServerError)
@@ -79,6 +80,7 @@ func EditStatusHandler(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
 	workflowID, _ := strconv.Atoi(q.Get("workflow_id"))
+	version, _:= strconv.Atoi(q.Get("version"))
 	statusID, _ := strconv.Atoi(q.Get("status_id"))
 	statusName := q.Get("status_name")
 
@@ -118,7 +120,7 @@ func EditStatusHandler(w http.ResponseWriter, r *http.Request) {
 		GS_CODE_REQ_STATUS_ID: gsCodeID,
 		IS_TERMINAL:       isTerminal,
 		SUCCESS_PATH:      successPath,
-	}, workflowID)
+	}, workflowID, version)
 
 	if err != nil {
 		http.Error(w, "Failed to update status", http.StatusInternalServerError)
@@ -142,9 +144,10 @@ func DeleteStatusHandler(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
 	workflowID, _ := strconv.Atoi(q.Get("workflow_id"))
+	version, _:= strconv.Atoi(q.Get("version"))
 	statusID, _ := strconv.Atoi(q.Get("status_id"))
 
-	err := database.DeleteStatus(statusID, workflowID)
+	err := database.DeleteStatus(statusID, workflowID, version)
 	if err != nil {
 		fmt.Println("Error deleting status:", err)
 		http.Error(w, "Failed to delete status", http.StatusInternalServerError)

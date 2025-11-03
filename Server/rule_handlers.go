@@ -19,20 +19,25 @@ func ViewDetailsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	idStr := strings.TrimPrefix(r.URL.Path, "/view_workflow/")
-	WF_ID, err := strconv.Atoi(idStr)
+	Str := strings.Split(strings.TrimPrefix(r.URL.Path, "/view_workflow/"), "/")
+	WF_ID, err := strconv.Atoi(Str[0])
 	if err != nil {
 		http.Error(w, "Invalid workflow ID", http.StatusBadRequest)
 		return
 	}
+	version, err := strconv.Atoi(Str[1])
+	if err != nil {
+		http.Error(w, "Invalid workflow version", http.StatusBadRequest)
+		return
+	}
 
-	statuses, err := database.ViewStatuses(WF_ID)
+	statuses, err := database.ViewStatuses(WF_ID, version)
 	if err != nil {
 		http.Error(w, "Failed to retrieve statuses", http.StatusInternalServerError)
 		return
 	}
 
-	rules, err := database.ViewRules(WF_ID)
+	rules, err := database.ViewRules(WF_ID, version)
 	if err != nil {
 		http.Error(w, "Failed to retrieve rules", http.StatusInternalServerError)
 		return
@@ -75,6 +80,7 @@ func AddRuleHandler(w http.ResponseWriter, r *http.Request) {
 		ACTION_BUTTON     string `json:"action_button"`
 		ACTION_FUNCTION   string `json:"action_function"`
 		WF_ID       int    `json:"workflow_id"`
+		VERSION int `json:"version"`
 	}
 
 	var input RuleInput
@@ -83,6 +89,8 @@ func AddRuleHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid input", http.StatusBadRequest)
 		return
 	}
+
+	fmt.Println("rule input: ", input)
 
 	if input.SE_ACCNT == "" && input.SE_CODE_USER_TYPE == "" {
 		fmt.Println("atleast one of SE_ACCNT or SE_CODE_USER_TYPE is required")
@@ -95,7 +103,7 @@ func AddRuleHandler(w http.ResponseWriter, r *http.Request) {
 	var SE_CODE_USER_TYPE_SLICE = strings.Split(input.SE_CODE_USER_TYPE, "_")
 	var SE_ACCNT_SLICE = strings.Split(input.SE_ACCNT, "_")
 
-	err = database.AddRule(input.WF_ID, FROM_STATUS_SLICE, TO_STATUS_SLICE, SE_CODE_USER_TYPE_SLICE, SE_ACCNT_SLICE, input.ACTION_BUTTON, input.ACTION_FUNCTION)
+	err = database.AddRule(input.WF_ID, input.VERSION, FROM_STATUS_SLICE, TO_STATUS_SLICE, SE_CODE_USER_TYPE_SLICE, SE_ACCNT_SLICE, input.ACTION_BUTTON, input.ACTION_FUNCTION)
 	if err != nil {
 		fmt.Println("Error adding rule:", err)
 		http.Error(w, "Failed to add rule", http.StatusInternalServerError)
@@ -116,6 +124,7 @@ func EditRuleHandler(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
 	workflowID, _ := strconv.Atoi(q.Get("workflow_id"))
+	version, _:= strconv.Atoi(q.Get("version"))
 	ruleID, _ := strconv.Atoi(q.Get("rule_id"))
 	fromStatusId, _ := strconv.Atoi(q.Get("from_status_id"))
 	toStatusId, _ := strconv.Atoi(q.Get("to_status_id"))
@@ -140,7 +149,7 @@ func EditRuleHandler(w http.ResponseWriter, r *http.Request) {
 		SE_ACCNT_ID:      seAccntID,
 		ACTION_BUTTON:   actionButton,
 		ACTION_FUNCTION: actionFunction,
-	}, workflowID)
+	}, workflowID, version)
 
 	if err != nil {
 		fmt.Println("Error updating rule:", err)
@@ -164,9 +173,10 @@ func DeleteRuleHandler(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
 	workflowID, _ := strconv.Atoi(q.Get("workflow_id"))
+	version, _:= strconv.Atoi(q.Get("version"))
 	ruleID, _ := strconv.Atoi(q.Get("rule_id"))
 
-	err := database.DeleteRule(ruleID, workflowID)
+	err := database.DeleteRule(ruleID, workflowID, version)
 	if err != nil {
 		fmt.Println("Error deleting rule:", err)
 		http.Error(w, "Failed to delete rule", http.StatusInternalServerError)
@@ -186,10 +196,15 @@ func LookupsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	idStr := strings.TrimPrefix(r.URL.Path, "/lookups/")
-	WF_ID, err := strconv.Atoi(idStr)
+	Str := strings.Split(strings.TrimPrefix(r.URL.Path, "/lookups/"), "/")
+	WF_ID, err := strconv.Atoi(Str[0])
 	if err != nil {
 		http.Error(w, "Invalid workflow ID", http.StatusBadRequest)
+		return
+	}
+	version, err := strconv.Atoi(Str[1])
+	if err != nil {
+		http.Error(w, "Invalid workflow version", http.StatusBadRequest)
 		return
 	}
 
@@ -223,7 +238,7 @@ func LookupsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	workflowStatuses, err := database.ViewStatuses(WF_ID)
+	workflowStatuses, err := database.ViewStatuses(WF_ID, version)
 	if err != nil {
 		http.Error(w, "Failed to retrieve workflow statuses", http.StatusInternalServerError)
 		return

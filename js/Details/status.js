@@ -1,32 +1,43 @@
+// status.js
 import { escapeHtml, nullable } from '../helpers.js';
 import { ED_CODE_STATUS_CAT, ED_CODE_STATUS, GS_CODE_REQ_STATUS } from './details.js';
 
+function opt(v, t) { return `<option value="${v}">${escapeHtml(t)}</option>`; }
+function buildOptions(arr, idKey, textKey, extraText = null) {
+  return arr.map(o => {
+    const id = o[idKey];
+    const text = extraText ? extraText(o) : o[textKey];
+    return opt(id, text);
+  }).join('');
+}
+
 window.createStatus = createStatus;
-export function createStatus(e, workflowID) {
+export function createStatus(e, workflowID, version) {
   if (e && typeof e.preventDefault === 'function') e.preventDefault();
 
   const form = document.getElementById('add-status-form');
   if (!form) return console.error('add-status-form not found');
 
   const formData = new FormData(form);
-  const edCodeStatusId = formData.get('ed_code_status_id');
-  const gsCodeReqStatusId = formData.get('gs_code_req_status_id');
+  const edId = formData.get('ed_code_status_id');
+  const gsId = formData.get('gs_code_req_status_id');
 
-  if ((!edCodeStatusId && !gsCodeReqStatusId) || (edCodeStatusId && gsCodeReqStatusId)) {
+  if ((!edId && !gsId) || (edId && gsId)) {
     alert("Please select either an ED Code Status or a GS Code Request Status.");
     return;
   }
 
   const data = Object.fromEntries(formData.entries());
   data.workflow_id = workflowID;
+  data.version =  version
 
   fetch('/add_status', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   })
-  .then(r => {
-    if (!r.ok) throw new Error('Failed to create status');
+  .then(r => { if (!r.ok) throw new Error('Failed to create status'); })
+  .then(() => {
     const wfid = new URLSearchParams(window.location.search).get('workflow');
     if (wfid) window.viewDetails(wfid);
   })
@@ -34,149 +45,159 @@ export function createStatus(e, workflowID) {
 }
 
 window.editStatus = editStatus;
-export function editStatus(statusID, statusName, edID, ED_DESCR_EN, gsID, GS_DESCR_EN, isTerminal, successPath, workflowID) {
-  console.log("edit status for workflow ID:", workflowID);
-
+export function editStatus(statusID, statusName, edID, ED_DESCR_EN, gsID, GS_DESCR_EN, isTerminal, successPath, workflowID, version) {
   const row = document.getElementById(`status_row_${statusID}`);
   if (!row) return;
 
-  // per-row unique ids (avoid clashes if multiple edits)
-  const edCatInputId  = `ed_code_status_cat_edit_input_${statusID}`;
-  const edCatListId   = `ed_codes_cat_edit_${statusID}`;
-  const edCodesListId = `ed_codes_edit_${statusID}`;
-  const gsCodesListId = `gs_codes_${statusID}`;
+  const formId     = `edit_status_form_${statusID}`;
+  const edCatSelId = `ed_cat_sel_${statusID}`;
+  const edCodeSelId= `ed_code_sel_${statusID}`;
+  const gsSelId    = `gs_sel_${statusID}`;
 
-  const edCatValue = edID ? getCat(edID) : '';
-  const edCodeValue = edID ? `${edID}_${ED_DESCR_EN || ''}` : '';
-  const gsCodeValue = gsID ? `${gsID}_${GS_DESCR_EN || ''}` : '';
+  // derive cat from edID if present
+  const edCatVal = (function() {
+    if (!edID) return '';
+    const st = ED_CODE_STATUS.find(s => String(s.ed_code_status_id) === String(edID));
+    return st ? String(st.cat_id) : '';
+  })();
 
-  const formId = `edit_status_form_${statusID}`;
   row.innerHTML = `
-    <!-- hidden form element to own the inputs -->
     <form id="${formId}" style="display:none"></form>
 
     <td>${statusID}</td>
-    <td><input form="${formId}" type="text" name="status_name"
-              value="${escapeHtml(statusName || '')}" required></td>
+    <td><input form="${formId}" type="text" name="status_name" value="${escapeHtml(statusName||'')}" required></td>
 
     <td>
       <label>ED_CODE_STATUS_CAT
-        <input form="${formId}" list="${edCatListId}" id="${edCatInputId}"
-              name="ed_code_status_cat_id" placeholder="Search..."
-              value="${escapeHtml(edCatValue)}"
-              onchange="updateEdCodesByIds('${edCatInputId}', '${edCodesListId}')">
-        <datalist id="${edCatListId}">
-          ${ED_CODE_STATUS_CAT.map(o =>
-            `<option value="${o.ed_code_status_cat_id}_${escapeHtml(o.descr_en)}">${o.ed_code_status_cat_id}_${escapeHtml(o.descr_en)}</option>`
-          ).join('')}
-        </datalist>
+        <select form="${formId}" id="${edCatSelId}" name="ed_code_status_cat_id">
+          <option value="">--</option>
+          ${buildOptions(ED_CODE_STATUS_CAT,'ed_code_status_cat_id','descr_en',o=>`${o.descr_en} (ID:${o.ed_code_status_cat_id})`)}
+        </select>
       </label>
 
       <label>ED_CODE_STATUS
-        <input form="${formId}" list="${edCodesListId}" name="ed_code_status_id"
-              placeholder="Search..." value="${escapeHtml(edCodeValue)}">
-        <datalist id="${edCodesListId}">
-          ${ED_CODE_STATUS.filter(o => isEdinCatByInputId(o, edCatInputId)).map(o =>
-            `<option value="${o.ed_code_status_id}_${escapeHtml(o.descr_en)}">${o.ed_code_status_id}_${escapeHtml(o.descr_en)}</option>`
-          ).join('')}
-        </datalist>
+        <select form="${formId}" id="${edCodeSelId}" name="ed_code_status_id">
+          <option value="">--</option>
+        </select>
       </label>
     </td>
 
     <td>
-      <input form="${formId}" list="${gsCodesListId}" name="gs_code_req_status_id"
-            placeholder="Search..." value="${escapeHtml(gsCodeValue)}">
-      <datalist id="${gsCodesListId}">
-        ${GS_CODE_REQ_STATUS.map(o =>
-          `<option value="${o.gs_code_req_status_id}_${escapeHtml(o.descr_en)}">${o.gs_code_req_status_id}_${escapeHtml(o.descr_en)}</option>`
-        ).join('')}
-      </datalist>
-    </td>
-
-    <td>
-      <select form="${formId}" name="is_terminal">
-        <option value="0" ${isTerminal ? '' : 'selected'}>No</option>
-        <option value="1" ${isTerminal ? 'selected' : ''}>Yes</option>
+      <select form="${formId}" id="${gsSelId}" name="gs_code_req_status_id">
+        <option value="">--</option>
+        ${buildOptions(GS_CODE_REQ_STATUS,'gs_code_req_status_id','descr_en',o=>`${o.descr_en} (ID:${o.gs_code_req_status_id})`)}
       </select>
     </td>
 
     <td>
-      <input form="${formId}" type="number" name="success_path"
-            placeholder="optional" value="${successPath == null ? '' : String(successPath)}">
+      <select form="${formId}" name="is_terminal">
+        <option value="0" ${isTerminal? '' : 'selected'}>No</option>
+        <option value="1" ${isTerminal? 'selected' : ''}>Yes</option>
+      </select>
+    </td>
+
+    <td>
+      <input form="${formId}" type="number" name="success_path" value="${successPath==null?'':String(successPath)}" placeholder="optional">
     </td>
 
     <td>
       <button class="icon-btn save" type="button"
-              onclick="event.stopPropagation(); saveStatus(${statusID}, ${workflowID})"
+              onclick="event.stopPropagation(); saveStatus(${statusID}, ${workflowID}, ${version})"
               title="Save">
         <i class="fa-solid fa-check"></i>
       </button>
+
       <button class="icon-btn cancel" type="button"
-              onclick="event.stopPropagation(); cancelStatusEdit(${statusID}, '${escapeHtml(statusName || '')}', ${edID ?? 'null'}, '${escapeHtml(ED_DESCR_EN || '')}', ${gsID ?? 'null'}, '${escapeHtml(GS_DESCR_EN || '')}', ${isTerminal ? 1 : 0}, ${successPath == null ? 'null' : Number(successPath)}, ${workflowID})"
+              onclick="event.stopPropagation(); cancelStatusEdit(${statusID}, '${escapeHtml(statusName||'')}', ${edID??'null'}, '${escapeHtml(ED_DESCR_EN||'')}', ${gsID??'null'}, '${escapeHtml(GS_DESCR_EN||'')}', ${isTerminal?1:0}, ${successPath==null?'null':Number(successPath)}, ${workflowID}, ${version})"
               title="Cancel">
         <i class="fa-solid fa-xmark"></i>
       </button>
     </td>
   `;
 
+  const EMPTY_OPTION = { value: '', text: '--' };
+
+  // init Tom Selects
+  const tsCat = new TomSelect('#'+edCatSelId, { create:false, closeAfterSelect:true, allowEmptyOption:true });
+  const tsEd  = new TomSelect('#'+edCodeSelId,{ 
+    create:false, 
+    closeAfterSelect:true, 
+    allowEmptyOption:true,
+    valueField: 'value',
+    labelField: 'text',
+    searchField: ['text'],
+    options: [EMPTY_OPTION]
+  });
+  const tsGs  = new TomSelect('#'+gsSelId,   { create:false, closeAfterSelect:true, allowEmptyOption:true });
+
+  const catKey = (o) => String(
+      o.cat_id ??
+      o.ED_CODE_STATUS_CAT_ID ??
+      o.ed_code_status_cat_id
+    );
+  // Populate ED codes filtered by category
+  const applyEdCodes = (catVal) => {
+       const list = (catVal ? ED_CODE_STATUS.filter(x => catKey(x) === String(catVal)) : [])
+          .map(o => ({
+            value: String(o.ed_code_status_id),
+            text: `${o.descr_en} (ID:${o.ed_code_status_id})`
+          }));
+
+        // clear current selection + options, then add fresh list
+        tsEd.clear(true);         // clear selection (removes the "--" selection)
+        tsEd.clearOptions();      // remove previous options
+        tsEd.addOption(EMPTY_OPTION); // add back the empty option
+        tsEd.addOptions(list);    // add new options
+        tsEd.refreshOptions(false);
+        tsEd.setValue('', true);
+  };
+
+  tsCat.on('change', (val)=> applyEdCodes(val));
+  // initial defaults
+  if (edID) {
+    tsCat.setValue(String(edCatVal), true);
+    applyEdCodes(String(edCatVal));
+    tsEd.setValue(String(edID), true);
+  }
+  if (gsID) tsGs.setValue(String(gsID), true);
 }
 
 window.saveStatus = saveStatus;
-export function saveStatus(statusID, workflowID) {
-  console.log("save status for workflow ID:", workflowID);
-
+export function saveStatus(statusID, workflowID, version) {
   const form = document.getElementById('edit_status_form_' + statusID);
   if (!form) return console.error('edit_status_form not found');
-
   const formData = new FormData(form);
-  const edRaw = formData.get('ed_code_status_id');
-  const gsRaw = formData.get('gs_code_req_status_id');
 
-  console.log('formData:', Object.fromEntries(formData.entries()));
+  const edId = formData.get('ed_code_status_id');
+  const gsId = formData.get('gs_code_req_status_id');
 
-
-  if ((!edRaw && !gsRaw) || (edRaw && gsRaw)) {
+  if ((!edId && !gsId) || (edId && gsId)) {
     alert("Please select either an ED Code Status or a GS Code Request Status.");
     return;
   }
 
-  const idFromCombo = (v) => {
-    if (!v) return '';
-    const [id] = String(v).split('_', 1);
-    return id;
-  };
-
-  // Build query parameters for GET
   const params = new URLSearchParams({
     workflow_id: workflowID,
+    version: version,
     status_id: statusID,
     status_name: formData.get('status_name') || '',
-    ed_code_status_id: idFromCombo(edRaw),
-    gs_code_req_status_id: idFromCombo(gsRaw),
+    ed_code_status_id: edId || '',
+    gs_code_req_status_id: gsId || '',
     is_terminal: formData.get('is_terminal') || '0',
     success_path: formData.get('success_path') || '',
   });
 
-  fetch(`/edit_status?${params.toString()}`, {
-    method: 'GET',
-    headers: { 'Cache-Control': 'no-cache' },
-  })
-    .then(response => {
-      if (!response.ok) throw new Error("Failed to update status");
-      return response.json();
-    })
+  fetch(`/edit_status?${params.toString()}`, { method: 'GET', headers: { 'Cache-Control': 'no-cache' } })
+    .then(r => { if (!r.ok) throw new Error("Failed to update status"); return r.json(); })
     .then(() => {
-      console.log("Status updated:", statusID);
-      // refresh only the workflow details, not full reload
       const wfid = new URLSearchParams(window.location.search).get('workflow');
       if (wfid) window.viewDetails(wfid);
     })
-    .catch(error => console.error("Error updating status:", error));
+    .catch(err => console.error("Error updating status:", err));
 }
 
-
 window.cancelStatusEdit = cancelStatusEdit;
-export function cancelStatusEdit(statusID, statusName, edID, ED_DESCR_EN, gsID, GS_DESCR_EN, isTerminal, successPath, workflowID) {
+export function cancelStatusEdit(statusID, statusName, edID, ED_DESCR_EN, gsID, GS_DESCR_EN, isTerminal, successPath, workflowID, version) {
   const row = document.getElementById(`status_row_${statusID}`);
   if (!row) return;
 
@@ -189,13 +210,13 @@ export function cancelStatusEdit(statusID, statusName, edID, ED_DESCR_EN, gsID, 
     <td>${nullable(successPath)}</td>
     <td>
       <button class="icon-btn edit" type="button"
-              onclick="event.stopPropagation(); editStatus(${statusID}, '${escapeHtml(statusName || '')}', ${edID ?? 'null'}, '${escapeHtml(ED_DESCR_EN || '')}', ${gsID ?? 'null'}, '${escapeHtml(GS_DESCR_EN || '')}', ${isTerminal ? 1 : 0}, ${successPath == null ? 'null' : Number(successPath)}, ${workflowID})"
+              onclick="event.stopPropagation(); editStatus(${statusID}, '${escapeHtml(statusName || '')}', ${edID ?? 'null'}, '${escapeHtml(ED_DESCR_EN || '')}', ${gsID ?? 'null'}, '${escapeHtml(GS_DESCR_EN || '')}', ${isTerminal ? 1 : 0}, ${successPath == null ? 'null' : Number(successPath)}, ${workflowID}, ${version})"
               title="Edit">
         <i class="fa-solid fa-pen"></i>
       </button>
 
       <button class="icon-btn delete" type="button"
-              onclick="event.stopPropagation(); deleteStatus(${statusID}, ${workflowID})"
+              onclick="event.stopPropagation(); deleteStatus(${statusID}, ${workflowID}, ${version})"
               title="Delete">
         <i class="fa-solid fa-trash"></i>
       </button>
@@ -204,25 +225,17 @@ export function cancelStatusEdit(statusID, statusName, edID, ED_DESCR_EN, gsID, 
 }
 
 window.deleteStatus = deleteStatus;
-export function deleteStatus(statusID, workflowID) {
+export function deleteStatus(statusID, workflowID, version) {
   if (!confirm("Are you sure you want to delete this status?")) return;
-
-  fetch(`/delete_status?status_id=${statusID}&workflow_id=${workflowID}`)
-  .then(response => {
-      if (response.ok) {
-        console.log("Status deleted:", statusID);
-        // refresh only the workflow details, not full reload
-        const wfid = new URLSearchParams(window.location.search).get('workflow');
-        if (wfid) window.viewDetails(wfid);
-      
-      } else {
-        console.error("Failed to delete status:", statusID);
-      }
+  fetch(`/delete_status?status_id=${statusID}&workflow_id=${workflowID}&version=${version}`)
+    .then(r => { if (!r.ok) throw new Error('Failed'); })
+    .then(() => {
+      const wfid = new URLSearchParams(window.location.search).get('workflow');
+      if (wfid) window.viewDetails(wfid);
     })
-    .catch(error => {
-      console.error("Error deleting status:", error);
-    });
+    .catch(err => console.error("Error deleting status:", err));
 }
+
 // ---------- helpers ----------
 window.getCat = getCat;
 export function getCat(edCodeStatusId) {

@@ -20,9 +20,9 @@ type Status struct {
 
 
 //revise this
-func ViewStatuses(WF_ID int) ([]Status, error) {
+func ViewStatuses(WF_ID int, version int) ([]Status, error) {
 	//select the newest version for the given workflow
-	newestVersion, err := getNewestVersion(WF_ID)
+	newestVersion, err := getVersionID(WF_ID, version)
 	if err != nil {
 		fmt.Println("Error getting newest version: ", err)
 		return nil, err
@@ -112,9 +112,9 @@ func ViewStatuses(WF_ID int) ([]Status, error) {
 	return statuses, nil
 }
 
-func AddStatus(WF_ID int, STATUS_NAME string, IS_TERMINAL string, SUCCESS_PATH string, ED_CODE_STATUS_CAT []string, ED_CODE_STATUS []string, GS_CODE_REQ_STATUS []string) error {
+func AddStatus(WF_ID int, version int, STATUS_NAME string, IS_TERMINAL string, SUCCESS_PATH string, ED_CODE_STATUS_CAT []string, ED_CODE_STATUS []string, GS_CODE_REQ_STATUS []string) error {
 	//select the newest version for the given workflow
-	newestVersion, err := getNewestVersion(WF_ID)
+	newestVersion, err := getVersionID(WF_ID, version)
 	if err != nil {
 		fmt.Println("Error getting newest version: ", err)
 		return err
@@ -199,9 +199,9 @@ func getNextStatusID(WF_VERSION_ID int) (int, error) {
 	return nextID, nil
 }
 
-func UpdateStatus(status Status, workflowID int) error {
+func UpdateStatus(status Status, workflowID int, version int) error {
 	//select the newest version for the given workflow
-	newestVersion, err := getNewestVersion(workflowID)
+	newestVersion, err := getVersionID(workflowID, version)
 	if err != nil {
 		fmt.Println("Error getting newest version for workflow: ", workflowID, err)
 		return err
@@ -224,8 +224,8 @@ func UpdateStatus(status Status, workflowID int) error {
 	return nil
 }
 
-func DeleteStatus(statusID int, workflowID int) error {
-	newestVersion, err := getNewestVersion(workflowID)
+func DeleteStatus(statusID int, workflowID int, version int) error {
+	newestVersion, err := getVersionID(workflowID, version)
 	if err != nil {
 		fmt.Println("Error getting newest version: ", err)
 		return err

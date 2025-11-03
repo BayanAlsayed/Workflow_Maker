@@ -1,200 +1,165 @@
-import { WF_STATUSES, SE_CODE_USER_TYPE, SE_ACCNT, setUserType } from "./details.js";
+// rule.js
+import { WF_STATUSES, SE_CODE_USER_TYPE, SE_ACCNT } from "./details.js";
 import { escapeHtml, nullable } from "../helpers.js";
 
+function opt(v, t) { return `<option value="${v}">${escapeHtml(t)}</option>`; }
+function buildOptions(arr, idKey, textKey, extraText = null) {
+  return arr.map(o => {
+    const id = o[idKey];
+    const text = extraText ? extraText(o) : o[textKey];
+    return opt(id, text);
+  }).join('');
+}
+
 window.createRule = createRule;
-export function createRule(e, workflowID) {
+export function createRule(e, workflowID, version) {
   if (e && typeof e.preventDefault === 'function') e.preventDefault();
 
   const form = document.getElementById('add-rule-form');
   const formData = new FormData(form);
   const data = Object.fromEntries(formData.entries());
   data.workflow_id = workflowID;
+  data.version = version;
 
   fetch('/add_rule', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   })
-  .then(response => {
-    if (response.ok) {
-      console.log("Rule created");
-      viewDetails(new URLSearchParams(window.location.search).get('workflow'));
-    } else {
-      console.error("Failed to create rule");
-    }
+  .then(r => { if (!r.ok) throw new Error('Failed to create rule'); })
+  .then(() => {
+    const wfid = new URLSearchParams(window.location.search).get('workflow');
+    if (wfid) window.viewDetails(wfid);
   })
-  .catch(error => {
-    console.error("Error creating rule:", error);
-  });
+  .catch(err => console.error('Error creating rule:', err));
 }
 
 window.editRule = editRule;
-export function editRule(rule_id, from_status_id, from_status_name, to_status_id, to_status_name, se_code_user_type_id, user_type_en, se_accnt_id, accnt_en, action_button, action_function, workflowID) {
-    console.log("edit status for workflow ID:", workflowID);
+export function editRule(rule_id, from_status_id, from_status_name, to_status_id, to_status_name, se_code_user_type_id, user_type_en, se_accnt_id, accnt_en, action_button, action_function, workflowID, version) {
+  const row = document.getElementById(`rule_row_${rule_id}`);
+  if (!row) return;
 
-    const row = document.getElementById(`rule_row_${rule_id}`);
-    if (!row) return;
-  
-    // per-row unique ids (avoid clashes if multiple edits)
-    const fromStatusListId  = `from_status_edit_${rule_id}`;
-    const toStatusListId    = `to_status_edit_${rule_id}`;
+  const formId = `edit_rule_form_${rule_id}`;
+  const fromSelId = `from_status_sel_${rule_id}`;
+  const toSelId   = `to_status_sel_${rule_id}`;
+  const utSelId   = `user_type_sel_${rule_id}`;
+  const accSelId  = `account_sel_${rule_id}`;
 
-    const fromStatusValue = from_status_id ? `${from_status_id}_${from_status_name || ''}` : '';
-    const toStatusValue = to_status_id ? `${to_status_id}_${to_status_name || ''}` : '';
+  row.innerHTML = `
+    <form id="${formId}" style="display:none"></form>
 
-    const formId = `edit_rule_form_${rule_id}`;
-    row.innerHTML = `
-      <!-- hidden form element to own the inputs -->
-      <form id="${formId}" style="display:none"></form>
+    <td>${rule_id}</td>
 
-      <td>${rule_id}</td>
-      <td>
-        <input form="${formId}" list="${fromStatusListId}" 
-        name="from_status_id" placeholder="Search..."
-        value="${escapeHtml(fromStatusValue || '')}" required>
-        <datalist id="${fromStatusListId}">
-          ${WF_STATUSES.map(s =>
-            `<option value="${s.status_id}_${escapeHtml(s.status_name)}">${s.status_id}_${escapeHtml(s.status_name)}</option>`
-          ).join('')}
-        </datalist>
-      </td>
+    <td>
+      <select form="${formId}" id="${fromSelId}" name="from_status_id" required>
+        <option value="">--</option>
+        ${buildOptions(WF_STATUSES,'status_id','status_name',o=>`${o.status_name} (ID:${o.status_id})`)}
+      </select>
+    </td>
 
-      <td>
-        <input form="${formId}" list="${toStatusListId}" 
-        name="to_status_id" placeholder="Search..."
-        value="${escapeHtml(toStatusValue || '')}" required>
-        <datalist id="${toStatusListId}">
-          ${WF_STATUSES.map(s =>
-            `<option value="${s.status_id}_${escapeHtml(s.status_name)}">${s.status_id}_${escapeHtml(s.status_name)}</option>`
-          ).join('')}
-        </datalist>
-      </td>
+    <td>
+      <select form="${formId}" id="${toSelId}" name="to_status_id" required>
+        <option value="">--</option>
+        ${buildOptions(WF_STATUSES,'status_id','status_name',o=>`${o.status_name} (ID:${o.status_id})`)}
+      </select>
+    </td>
 
-      <td>
-        <input form="${formId}" list="user_types" name="se_code_user_type"
-        id="se_code_user_type_edit_${rule_id}"
-        placeholder="Search..." 
-        value="${se_code_user_type_id ? `${se_code_user_type_id}_${escapeHtml(user_type_en || '')}` : ''}"
-        required>
-        <datalist id="user_types">
-          ${SE_CODE_USER_TYPE.map(ut =>
-            `<option value="${ut.se_code_user_type_id}_${escapeHtml(ut.descr_en)}">${ut.se_code_user_type_id}_${escapeHtml(ut.descr_en)}</option>`
-          ).join('')}
-        </datalist>
-      </td>
+    <td>
+      <select form="${formId}" id="${utSelId}" name="se_code_user_type_id">
+        <option value="">--</option>
+        ${buildOptions(SE_CODE_USER_TYPE,'se_code_user_type_id','descr_en',o=>`${o.descr_en} (ID:${o.se_code_user_type_id})`)}
+      </select>
+    </td>
 
-      <td>
-        <input form="${formId}" list="accnts" name="se_accnt" 
-        placeholder="Search..." 
-        value="${se_accnt_id ? `${se_accnt_id}_${escapeHtml(accnt_en || '')}` : ''}"
-        onchange="setUserType(this, 'se_code_user_type_edit_${rule_id}')" >
-        <datalist id="accnts">
-          ${SE_ACCNT.map(acct =>
-            `<option value="${acct.se_accnt_id}_${escapeHtml(acct.descr_en)}">${acct.se_accnt_id}_${escapeHtml(acct.descr_en)}</option>`
-          ).join('')}
-        </datalist>
-      </td>
+    <td>
+      <select form="${formId}" id="${accSelId}" name="se_accnt_id">
+        <option value="">--</option>
+        ${buildOptions(SE_ACCNT,'se_accnt_id','descr_en',o=>`${o.descr_en} (ID:${o.se_accnt_id})`)}
+      </select>
+    </td>
 
-      <td>
-        <input form="${formId}" type="text" name="action_button" 
-        value="${escapeHtml(action_button || '')}" required>
-      </td>
+    <td>
+      <input form="${formId}" type="text" name="action_button" value="${escapeHtml(action_button||'')}" required>
+    </td>
 
-      <td>
-        <input form="${formId}" type="text" name="action_function" 
-        value="${escapeHtml(action_function || '')}">
-      </td>
+    <td>
+      <input form="${formId}" type="text" name="action_function" value="${escapeHtml(action_function||'')}">
+    </td>
 
-      <td>
-        <button class="icon-btn save" type="button"
-                onclick="event.stopPropagation(); saveRule(${rule_id}, ${workflowID})"
-                title="Save">
-          <i class="fa-solid fa-check"></i>
-        </button>
-        <button class="icon-btn cancel" type="button"
-                onclick="event.stopPropagation(); cancelRuleEdit(${rule_id}, '${from_status_id}', '${escapeHtml(from_status_name || '')}', '${to_status_id}', '${escapeHtml(to_status_name || '')}', '${se_code_user_type_id}', '${escapeHtml(user_type_en || '')}', '${se_accnt_id}', '${escapeHtml(accnt_en || '')}', '${escapeHtml(action_button || '')}', '${escapeHtml(action_function || '')}', ${workflowID})"
-                title="Cancel">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
-      </td>
+    <td>
+      <button class="icon-btn save" type="button"
+              onclick="event.stopPropagation(); saveRule(${rule_id}, ${workflowID}, ${version})"
+              title="Save">
+        <i class="fa-solid fa-check"></i>
+      </button>
+      <button class="icon-btn cancel" type="button"
+              onclick="event.stopPropagation(); cancelRuleEdit(${rule_id}, '${from_status_id}', '${escapeHtml(from_status_name||'')}', '${to_status_id}', '${escapeHtml(to_status_name||'')}', '${se_code_user_type_id}', '${escapeHtml(user_type_en||'')}', '${se_accnt_id}', '${escapeHtml(accnt_en||'')}', '${escapeHtml(action_button||'')}', '${escapeHtml(action_function||'')}', ${workflowID}, ${version})"
+              title="Cancel">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </td>
+  `;
 
-    `;
+  const tsFrom = new TomSelect('#'+fromSelId, { create:false, closeAfterSelect:true, allowEmptyOption:true });
+  const tsTo   = new TomSelect('#'+toSelId,   { create:false, closeAfterSelect:true, allowEmptyOption:true });
+  const tsUT   = new TomSelect('#'+utSelId,   { create:false, closeAfterSelect:true, allowEmptyOption:true });
+  const tsAcc  = new TomSelect('#'+accSelId,  { create:false, closeAfterSelect:true, allowEmptyOption:true });
+
+  if (from_status_id) tsFrom.setValue(String(from_status_id), true);
+  if (to_status_id)   tsTo.setValue(String(to_status_id), true);
+  if (se_code_user_type_id) tsUT.setValue(String(se_code_user_type_id), true);
+  if (se_accnt_id)          tsAcc.setValue(String(se_accnt_id), true);
+
+  // account → user type auto-fill
+  tsAcc.on('change', (val)=>{
+    const acct = SE_ACCNT.find(a => String(a.se_accnt_id) === String(val));
+    if (!acct) return;
+    const ut = SE_CODE_USER_TYPE.find(u => String(u.se_code_user_type_id) === String(acct.se_code_user_type_id));
+    if (ut) tsUT.setValue(String(ut.se_code_user_type_id), true);
+  });
 }
 
 window.deleteRule = deleteRule;
-export function deleteRule(rule_id, workflowID) {
+export function deleteRule(rule_id, workflowID, version) {
   if (!confirm("Are you sure you want to delete this rule?")) return;
-
-  fetch(`/delete_rule?rule_id=${rule_id}&workflow_id=${workflowID}`)
-    .then(response => {
-      if (response.ok) {
-        console.log("Rule deleted:", rule_id);
-        // refresh only the workflow details, not full reload
-        const wfid = new URLSearchParams(window.location.search).get('workflow');
-        if (wfid) window.viewDetails(wfid);
-      } else {
-        console.error("Failed to delete rule:", rule_id);
-      }
+  fetch(`/delete_rule?rule_id=${rule_id}&workflow_id=${workflowID}&version=${version}`)
+    .then(r => { if (!r.ok) throw new Error('Failed'); })
+    .then(() => {
+      const wfid = new URLSearchParams(window.location.search).get('workflow');
+      if (wfid) window.viewDetails(wfid);
     })
-    .catch(error => {
-      console.error("Error deleting rule:", error);
-    });
+    .catch(err => console.error("Error deleting rule:", err));
 }
 
 window.saveRule = saveRule;
-export function saveRule(rule_id, workflowID){
-  console.log("save rule for workflow ID:", workflowID);
-
+export function saveRule(rule_id, workflowID, version){
   const form = document.getElementById('edit_rule_form_' + rule_id);
   if (!form) return console.error('edit_rule_form not found');
 
   const formData = new FormData(form);
-  console.log('formData:', Object.fromEntries(formData.entries()));
-
-  const idFromCombo = (v) => {
-    if (!v) return '';
-    const [id] = String(v).split('_', 1);
-    return id;
-  };
-
   const params = new URLSearchParams({
     workflow_id: workflowID,
+    version: version,
     rule_id: rule_id,
-    from_status_id: idFromCombo(formData.get('from_status_id')),
-    to_status_id: idFromCombo(formData.get('to_status_id')),
-    se_code_user_type_id: idFromCombo(formData.get('se_code_user_type')),
-    se_accnt_id: idFromCombo(formData.get('se_accnt')),
-    action_button: formData.get('action_button'),
-    action_function: nullable(formData.get('action_function')),
+    from_status_id: formData.get('from_status_id') || '',
+    to_status_id: formData.get('to_status_id') || '',
+    se_code_user_type_id: formData.get('se_code_user_type_id') || '',
+    se_accnt_id: formData.get('se_accnt_id') || '',
+    action_button: formData.get('action_button') || '',
+    action_function: formData.get('action_function') || '',
   });
 
-  console.log('Saving rule with params:', params.toString());
-
-  fetch(`/edit_rule?${params.toString()}`, {
-    method: 'GET',
-    headers: { 'Cache-Control': 'no-cache' },
-  })
-    .then(response => {
-      if (!response.ok) throw new Error("Failed to update rule");
-      return response.json();
-    })
+  fetch(`/edit_rule?${params.toString()}`, { method:'GET', headers:{'Cache-Control':'no-cache'} })
+    .then(r => { if (!r.ok) throw new Error("Failed to update rule"); return r.json(); })
     .then(() => {
-      console.log("Rule updated:", rule_id);
-      // refresh only the workflow details, not full reload
       const wfid = new URLSearchParams(window.location.search).get('workflow');
       if (wfid) window.viewDetails(wfid);
     })
-    .catch(error => console.error("Error updating rule:", error));
+    .catch(err => console.error("Error updating rule:", err));
 }
 
-
-
 window.cancelRuleEdit = cancelRuleEdit;
-export function cancelRuleEdit(rule_id, from_status_id, from_status_name, to_status_id, to_status_name, se_code_user_type_id, user_type_en, se_accnt_id, accnt_en, action_button, action_function, workflowID){
-  console.log("cancel rule edit for workflow ID:", workflowID);
-
+export function cancelRuleEdit(rule_id, from_status_id, from_status_name, to_status_id, to_status_name, se_code_user_type_id, user_type_en, se_accnt_id, accnt_en, action_button, action_function, workflowID, version){
   const row = document.getElementById(`rule_row_${rule_id}`);
   if (!row) return;
 
@@ -208,18 +173,16 @@ export function cancelRuleEdit(rule_id, from_status_id, from_status_name, to_sta
     <td>${escapeHtml(action_function || '')}</td>
     <td>
       <button class="icon-btn edit" type="button"
-        onclick="event.stopPropagation(); editRule(${rule_id}, ${from_status_id}, '${from_status_name}', ${to_status_id}, '${to_status_name}', ${se_code_user_type_id}, '${user_type_en}', ${se_accnt_id}, '${accnt_en}', '${action_button}', '${action_function}', ${workflowID})"
+        onclick="event.stopPropagation(); editRule(${rule_id}, ${from_status_id}, '${escapeHtml(from_status_name||'')}', ${to_status_id}, '${escapeHtml(to_status_name||'')}', ${se_code_user_type_id}, '${escapeHtml(user_type_en||'')}', ${se_accnt_id}, '${escapeHtml(accnt_en||'')}', '${escapeHtml(action_button||'')}', '${escapeHtml(action_function||'')}', ${workflowID}, ${version})"
         title="Edit">
         <i class="fa-solid fa-pen"></i>
       </button>
 
       <button class="icon-btn delete" type="button"
-        onclick="event.stopPropagation(); deleteRule(${rule_id}, ${workflowID})"
+        onclick="event.stopPropagation(); deleteRule(${rule_id}, ${workflowID}, ${version})"
         title="Delete">
         <i class="fa-solid fa-trash"></i>
       </button>
     </td>
   `;
 }
-
-

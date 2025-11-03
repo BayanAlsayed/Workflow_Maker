@@ -20,9 +20,9 @@ type Rule struct {
 	ACTION_FUNCTION      *string `json:"action_function"`
 }
 
-func ViewRules(WF_ID int) ([]Rule, error) {
+func ViewRules(WF_ID int, version int) ([]Rule, error) {
 	//select the newest version for the given workflow
-	newestVersion, err := getNewestVersion(WF_ID)
+	newestVersion, err := getVersionID(WF_ID, version)
 	if err != nil {
 		return nil, err
 	}
@@ -116,9 +116,9 @@ func ViewRules(WF_ID int) ([]Rule, error) {
 	return rules, nil
 }
 
-func AddRule(WF_ID int, FROM_STATUS_SLICE []string, TO_STATUS_SLICE []string, USER_TYPE_SLICE []string, ACCOUNT_SLICE []string, ACTION_BUTTON string, ACTION_FUNCTION string) error {
+func AddRule(WF_ID int, version int, FROM_STATUS_SLICE []string, TO_STATUS_SLICE []string, USER_TYPE_SLICE []string, ACCOUNT_SLICE []string, ACTION_BUTTON string, ACTION_FUNCTION string) error {
 	//select the newest version for the given workflow
-	newestVersion, err := getNewestVersion(WF_ID)
+	newestVersion, err := getVersionID(WF_ID, version)
 	if err != nil {
 		fmt.Println("Error getting newest version: ", err)
 		return err
@@ -173,9 +173,9 @@ func strPtr(s string) *string {
 	return &s
 }
 
-func UpdateRule(rule Rule, WorkflowID int) error {
+func UpdateRule(rule Rule, WorkflowID int, version int) error {
 	//select the newest version for the given workflow
-	newestVersion, err := getNewestVersion(WorkflowID)
+	newestVersion, err := getVersionID(WorkflowID, version)
 	if err != nil {
 		fmt.Println("Error getting newest version: ", err)
 		return err
@@ -204,8 +204,8 @@ func UpdateRule(rule Rule, WorkflowID int) error {
 	return nil
 }
 
-func DeleteRule(ruleID int, workflowID int) error {
-	newestVersion, err := getNewestVersion(workflowID)
+func DeleteRule(ruleID int, workflowID int, version int) error {
+	newestVersion, err := getVersionID(workflowID, version)
 	if err != nil {
 		fmt.Println("Error getting newest version: ", err)
 		return err
