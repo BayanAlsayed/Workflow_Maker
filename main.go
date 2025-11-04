@@ -69,6 +69,7 @@ func main() {
 	mux.HandleFunc("/delete_rule", server.DeleteRuleHandler)
 
 	mux.HandleFunc("/view_conditions", server.ViewConditionsHandler)
+	mux.HandleFunc("/add_condition", server.AddConditionHandler)
 
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static/"))))
 	mux.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("./js/"))))
