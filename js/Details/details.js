@@ -1,29 +1,14 @@
 // details.js
-import { escapeHtml, nullable } from "../helpers.js";
+import { escapeHtml, nullable, opt, buildOptions, initTomSelectSingle } from "../helpers.js";
 export let ED_CODE_STATUS_CAT = [];
 export let ED_CODE_STATUS = [];
 export let GS_CODE_REQ_STATUS = [];
 export let SE_CODE_USER_TYPE = [];
 export let SE_ACCNT = [];
+export let WF_CONDITIONS = [];
 export let WF_STATUSES = [];
 
-// small helpers
-function opt(v, t) { return `<option value="${v}">${escapeHtml(t)}</option>`; }
-function buildOptions(arr, idKey, textKey, extraText = null) {
-  return arr.map(o => {
-    const id = o[idKey];
-    const text = extraText ? extraText(o) : o[textKey];
-    return opt(id, text);
-  }).join('');
-}
 
-function initTomSelectSingle(selector, onChange) {
-  const el = document.querySelector(selector);
-  if (!el) return null;
-  const ts = new TomSelect(el, { create:false, maxOptions:1000, closeAfterSelect:true, allowEmptyOption:true });
-  if (onChange) ts.on('change', onChange);
-  return ts;
-}
 
 window.viewDetails = viewDetails;
 export function viewDetails(workflowID) {
@@ -137,6 +122,50 @@ export function viewDetails(workflowID) {
                           title="Delete">
                           <i class="fa-solid fa-trash"></i>
                         </button>
+
+                        <button class="icon-btn cond-add" type="button"
+                          onclick="event.stopPropagation(); addConditionPrompt(${r.rule_id}, ${workflowID}, ${version})" title="Add condition">
+                          <i class="fa-solid fa-plus-circle"></i>
+                        </button>
+
+                        <button class="icon-btn" onclick="event.stopPropagation(); toggleRuleConditions(${r.rule_id})" title="Toggle conditions">
+                          <i class="fa-solid fa-filter"></i>
+                        </button>
+                      </td>
+                    </tr>
+                    <tr id="rule_conditions_wrapper_${r.rule_id}" class="cond-row" style="display: ${r.rule_conditions && r.rule_conditions.length ? 'table-row' : 'none'};">
+                      <td class="cond-cell" colspan="8">
+                        <div class="cond-container" id="rule_conditions_container_${r.rule_id}">
+                          ${
+                            (r.rule_conditions && r.rule_conditions.length) ? 
+                            r.rule_conditions.map(rc => `
+                              <div class="cond-card" id="cond_card_${rc.rule_condition_id}_${r.rule_id}">
+                                <div class="cond-func">${escapeHtml(rc.wf_condition_func_name || '(Unnamed)')}</div>
+                                <div class="cond-desc">${escapeHtml(rc.wf_condition_description || '')}</div>
+                                <div class="cond-meta">
+                                  <div class="cond-left">
+                                    <span>${escapeHtml(rc.rule_condition_type || '')}</span>
+                                    ${rc.active_workflows_using ? `<span style="margin-left:8px;color:#8b8f99">· ${escapeHtml(rc.active_workflows_using)}</span>` : ''}
+                                  </div>
+                                  <div class="cond-actions">
+                                    <button class="icon-btn cond" title="Edit condition" onclick="event.stopPropagation(); editConditionPrompt(${rc.rule_condition_id}, ${r.rule_id})"><i class="fa-solid fa-pen"></i></button>
+                                    <button class="icon-btn cond" title="Delete condition" onclick="event.stopPropagation(); deleteCondition(${rc.rule_condition_id}, ${r.rule_id})"><i class="fa-solid fa-trash"></i></button>
+                                  </div>
+                                </div>
+                              </div>
+                            `).join('') :
+                            `<div class="cond-empty">No conditions attached to this rule.</div>`
+                          }
+
+                          <!-- add condition quick button -->
+                          <div style="align-self:flex-start; margin-left:6px;">
+                            <button class="cond-add-btn" onclick="event.stopPropagation(); addConditionPrompt(${r.rule_id}, ${workflowID}, ${version})">
+                              <i class="fa-solid fa-plus-circle" style="margin-right:6px"></i>
+                              Add condition
+                            </button>
+                          </div>
+
+                        </div>
                       </td>
                     </tr>
                   `).join('')}
@@ -233,15 +262,11 @@ export function viewDetails(workflowID) {
           .catch(err => console.error("Error fetching workflow details:", err));
 
         // Lookups & init Tom Selects
-        fetch(`/lookups/${workflowID}/${version}`)
+        fetch(`/wf_lookups/${workflowID}/${version}`)
           .then(r => { if (!r.ok) throw new Error("Failed to fetch lookups"); return r.json(); })
-          .then(lookups => {
-            ED_CODE_STATUS_CAT = lookups.ed_status_codes_cat || [];
-            ED_CODE_STATUS     = lookups.ed_status_codes || [];
-            GS_CODE_REQ_STATUS = lookups.gs_status_codes || [];
-            SE_CODE_USER_TYPE  = lookups.user_types || [];
-            SE_ACCNT           = lookups.accounts || [];
-            WF_STATUSES        = lookups.workflow_statuses || [];
+          .then(statuses => {
+
+            WF_STATUSES = statuses || [];
 
             console.log("ED_CODE_STATUS: ", ED_CODE_STATUS);
 
@@ -335,3 +360,38 @@ export function viewDetails(workflowID) {
     })
     .catch(err => console.error("Error fetching workflow version:", err));
 }
+
+window.loadLookups = loadLookups;
+export function loadLookups() {
+  // Preload CONDITIONS for condition.js
+  fetch('/lookups')
+    .then(r => { if (!r.ok) throw new Error("Failed to fetch conditions lookup"); return r.json(); })
+    .then(lookups => {
+        ED_CODE_STATUS_CAT = lookups.ed_status_codes_cat || [];
+        ED_CODE_STATUS     = lookups.ed_status_codes || [];
+        GS_CODE_REQ_STATUS = lookups.gs_status_codes || [];
+        SE_CODE_USER_TYPE  = lookups.user_types || [];
+        SE_ACCNT           = lookups.accounts || [];
+        WF_CONDITIONS      = lookups.wf_conditions || [];
+
+        console.log("Loaded lookups:", {
+          ED_CODE_STATUS_CAT,
+          ED_CODE_STATUS,
+          GS_CODE_REQ_STATUS,
+          SE_CODE_USER_TYPE,
+          SE_ACCNT,
+          WF_CONDITIONS
+        });
+    })
+    .catch(err => console.error("Error fetching conditions lookup:", err));
+}
+
+window.toggleRuleConditions = function(ruleID) {
+  const wrapper = document.getElementById(`rule_conditions_wrapper_${ruleID}`);
+  if (!wrapper) return;
+  if (wrapper.style.display == 'none') {
+    wrapper.style.display = 'table-row'
+  } else {
+    wrapper.style.display = 'none';
+  }
+};

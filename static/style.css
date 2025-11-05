@@ -210,3 +210,116 @@
 }
 .wf-create .btn.primary:hover { background: #1e40af; }
 
+/* -------------------------
+   Condition list container
+   ------------------------- */
+.cond-row {
+  background: #fafafa;
+}
+
+.cond-cell {
+  padding: 0.5rem 1rem;
+  border-top: 1px solid #eee;
+  background: #fcfcfd;
+}
+
+/* flex container that holds cards and the add button */
+.cond-container {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  padding: 10px 0;
+}
+
+/* each condition shown like a card */
+.cond-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 240px;
+  max-width: 360px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(30,30,30,0.04);
+  border: 1px solid #e6e8eb;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+
+/* hover highlight */
+.cond-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 18px rgba(20,20,20,0.06);
+}
+
+/* condition header (function name) */
+.cond-card .cond-func {
+  font-weight: 600;
+  font-size: 0.98rem;
+  color: #0f1724;
+}
+
+/* small description */
+.cond-card .cond-desc {
+  font-size: 0.9rem;
+  color: #52586a;
+  line-height: 1.2;
+}
+
+/* meta/footer row inside card for type/counts and actions */
+.cond-card .cond-meta {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 8px;
+  margin-top:6px;
+  font-size:0.85rem;
+  color:#6b7280;
+}
+
+/* container for action icons on each card */
+.cond-card .cond-actions {
+  display:inline-flex;
+  gap:8px;
+  align-items:center;
+}
+
+/* small icon buttons matching your style */
+.icon-btn.cond {
+  padding:6px;
+  border-radius:8px;
+  font-size:0.95rem;
+  background:transparent;
+  border:1px solid transparent;
+}
+.icon-btn.cond:hover {
+  background: rgba(0,0,0,0.04);
+}
+
+/* empty state & add button styling */
+.cond-empty {
+  padding:12px;
+  color:#8b8f99;
+  font-style:italic;
+}
+.cond-add-btn {
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 10px;
+  border-radius:8px;
+  background:#0b5fff;
+  color:#fff;
+  box-shadow: 0 4px 10px rgba(11,95,255,0.12);
+  cursor:pointer;
+  border:0;
+}
+
+/* responsive: stack single column on small screens */
+@media (max-width:720px) {
+  .cond-container { flex-direction:column; }
+  .cond-card { width:100%; max-width:100%; }
+}
+
+

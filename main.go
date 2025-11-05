@@ -58,7 +58,9 @@ func main() {
 
 	mux.HandleFunc("/get_workflow_versions/", server.GetWorkflowVersionsHandler)
 	mux.HandleFunc("/view_workflow/", server.ViewDetailsHandler)
-	mux.HandleFunc("/lookups/", server.LookupsHandler)
+	mux.HandleFunc("/lookups", server.LookupsHandler)
+	mux.HandleFunc("/wf_lookups/", server.WFLookupsHandler)
+
 
 	mux.HandleFunc("/add_status", server.AddStatusHandler)
 	mux.HandleFunc("/edit_status", server.EditStatusHandler)
@@ -67,9 +69,11 @@ func main() {
 	mux.HandleFunc("/add_rule", server.AddRuleHandler)
 	mux.HandleFunc("/edit_rule", server.EditRuleHandler)
 	mux.HandleFunc("/delete_rule", server.DeleteRuleHandler)
+	mux.HandleFunc("/add_rule_condition", server.AddRuleConditionHandler)
 
 	mux.HandleFunc("/view_conditions", server.ViewConditionsHandler)
 	mux.HandleFunc("/add_condition", server.AddConditionHandler)
+
 
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static/"))))
 	mux.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("./js/"))))

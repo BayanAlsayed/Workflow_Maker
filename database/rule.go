@@ -18,11 +18,13 @@ type Rule struct {
 	ACCNT_EN             *string `json:"accnt_en"`
 	ACTION_BUTTON        string  `json:"action_button"`
 	ACTION_FUNCTION      *string `json:"action_function"`
+	RULE_CONDITIONS       []Rule_Condition `json:"rule_conditions"`
+
 }
 
 func ViewRules(WF_ID int, version int) ([]Rule, error) {
 	//select the newest version for the given workflow
-	newestVersion, err := getVersionID(WF_ID, version)
+	Version, err := getVersionID(WF_ID, version)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +49,7 @@ func ViewRules(WF_ID int, version int) ([]Rule, error) {
 			LEFT JOIN SE_CODE_USER_TYPE AS UT ON R.SE_CODE_USER_TYPE_ID = UT.SE_CODE_USER_TYPE_ID
 			LEFT JOIN SE_ACCNT AS ACC ON R.SE_ACCNT_ID = ACC.SE_ACCNT_ID
 			WHERE R.WF_VERSION_ID = ?
-	`, newestVersion)
+	`, Version)
 
 	if err != nil {
 		fmt.Println("Error fetching rules: ", err)
@@ -106,6 +108,41 @@ func ViewRules(WF_ID int, version int) ([]Rule, error) {
 			r.ACTION_FUNCTION = &v
 		}
 
+		ruleConditionRows, err := db.Query(`
+			SELECT
+				RC.WF_RULE_CONDITION_ID,
+				RC.RULE_CONDITION_ID,
+				RC.WF_CONDITION_ID,
+				C.FUNC_NAME,
+				C.DESCRIPTION,
+				RC.TYPE
+			FROM WF_RULE_CONDITION AS RC
+			JOIN WF_CONDITION AS C ON RC.WF_CONDITION_ID = C.WF_CONDITION_ID
+			WHERE RULE_ID = ? AND WF_VERSION_ID = ?
+		`, r.RULE_ID, Version)
+		if err != nil {
+			return nil, err
+		}
+
+		var ruleConditions []Rule_Condition
+		for ruleConditionRows.Next() {
+			var rc Rule_Condition
+
+			if err := ruleConditionRows.Scan(
+				&rc.WF_RULE_CONDITION_ID,
+				&rc.RULE_CONDITION_ID,
+				&rc.WF_CONDITION_ID,
+				&rc.WF_CONDITION_FUNC_NAME,
+				&rc.WF_CONDITION_DESCRIPTION,
+				&rc.RULE_CONDITION_TYPE,
+			); err != nil {
+				return nil, err
+			}
+
+			ruleConditions = append(ruleConditions, rc)
+		}
+
+		r.RULE_CONDITIONS = ruleConditions
 		rules = append(rules, r)
 	}
 
