@@ -69,7 +69,10 @@ func main() {
 	mux.HandleFunc("/add_rule", server.AddRuleHandler)
 	mux.HandleFunc("/edit_rule", server.EditRuleHandler)
 	mux.HandleFunc("/delete_rule", server.DeleteRuleHandler)
+
 	mux.HandleFunc("/add_rule_condition", server.AddRuleConditionHandler)
+	mux.HandleFunc("/edit_rule_condition", server.EditRuleConditionHandler)
+	mux.HandleFunc("/delete_rule_condition", server.DeleteRuleConditionHandler)
 
 	mux.HandleFunc("/view_conditions", server.ViewConditionsHandler)
 	mux.HandleFunc("/add_condition", server.AddConditionHandler)

@@ -35,7 +35,7 @@ export function createRule(e, workflowID, version) {
 }
 
 window.editRule = editRule;
-export function editRule(rule_id, from_status_id, from_status_name, to_status_id, to_status_name, se_code_user_type_id, user_type_en, se_accnt_id, accnt_en, action_button, action_function, workflowID, version) {
+export function editRule(rule_id, from_status_id, from_status_name, to_status_id, to_status_name, se_code_user_type_id, user_type_en, se_accnt_id, accnt_en, action_button, action_function, workflowID, version, is_condition) {
   const row = document.getElementById(`rule_row_${rule_id}`);
   if (!row) return;
 
@@ -93,7 +93,7 @@ export function editRule(rule_id, from_status_id, from_status_name, to_status_id
         <i class="fa-solid fa-check"></i>
       </button>
       <button class="icon-btn cancel" type="button"
-              onclick="event.stopPropagation(); cancelRuleEdit(${rule_id}, '${from_status_id}', '${escapeHtml(from_status_name||'')}', '${to_status_id}', '${escapeHtml(to_status_name||'')}', '${se_code_user_type_id}', '${escapeHtml(user_type_en||'')}', '${se_accnt_id}', '${escapeHtml(accnt_en||'')}', '${escapeHtml(action_button||'')}', '${escapeHtml(action_function||'')}', ${workflowID}, ${version})"
+              onclick="event.stopPropagation(); cancelRuleEdit(${rule_id}, '${from_status_id}', '${escapeHtml(from_status_name||'')}', '${to_status_id}', '${escapeHtml(to_status_name||'')}', '${se_code_user_type_id}', '${escapeHtml(user_type_en||'')}', '${se_accnt_id}', '${escapeHtml(accnt_en||'')}', '${escapeHtml(action_button||'')}', '${escapeHtml(action_function||'')}', ${workflowID}, ${version}, ${is_condition})"
               title="Cancel">
         <i class="fa-solid fa-xmark"></i>
       </button>
@@ -159,7 +159,7 @@ export function saveRule(rule_id, workflowID, version){
 }
 
 window.cancelRuleEdit = cancelRuleEdit;
-export function cancelRuleEdit(rule_id, from_status_id, from_status_name, to_status_id, to_status_name, se_code_user_type_id, user_type_en, se_accnt_id, accnt_en, action_button, action_function, workflowID, version){
+export function cancelRuleEdit(rule_id, from_status_id, from_status_name, to_status_id, to_status_name, se_code_user_type_id, user_type_en, se_accnt_id, accnt_en, action_button, action_function, workflowID, version, is_condition){
   const row = document.getElementById(`rule_row_${rule_id}`);
   if (!row) return;
 
@@ -182,6 +182,10 @@ export function cancelRuleEdit(rule_id, from_status_id, from_status_name, to_sta
         onclick="event.stopPropagation(); deleteRule(${rule_id}, ${workflowID}, ${version})"
         title="Delete">
         <i class="fa-solid fa-trash"></i>
+      </button>
+
+      <button class="icon-btn" onclick="event.stopPropagation(); toggleRuleConditions(${rule_id})" title="Toggle conditions">
+        <i class="fa-solid fa-plus" id="icon_plus_${rule_id}" style="transform: rotate(${is_condition ? '45deg' : '0deg'}); transition: transform 0.2s;"></i>
       </button>
     </td>
   `;

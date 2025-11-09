@@ -112,7 +112,7 @@ export function viewDetails(workflowID) {
                       <td>${escapeHtml(r.action_function || '')}</td>
                       <td>
                         <button class="icon-btn edit" type="button"
-                          onclick="event.stopPropagation(); editRule(${r.rule_id}, ${r.from_status_id}, '${escapeHtml(nullable(r.from_status_name)||'')}', ${r.to_status_id}, '${escapeHtml(nullable(r.to_status_name)||'')}', ${r.se_code_user_type_id ?? 'null'}, '${escapeHtml(nullable(r.user_type_en)||'')}', ${r.se_accnt_id ?? 'null'}, '${escapeHtml(nullable(r.accnt_en)||'')}', '${escapeHtml(r.action_button||'')}', '${escapeHtml(r.action_function||'')}', ${workflowID}, ${version})"
+                          onclick="event.stopPropagation(); editRule(${r.rule_id}, ${r.from_status_id}, '${escapeHtml(nullable(r.from_status_name)||'')}', ${r.to_status_id}, '${escapeHtml(nullable(r.to_status_name)||'')}', ${r.se_code_user_type_id ?? 'null'}, '${escapeHtml(nullable(r.user_type_en)||'')}', ${r.se_accnt_id ?? 'null'}, '${escapeHtml(nullable(r.accnt_en)||'')}', '${escapeHtml(r.action_button||'')}', '${escapeHtml(r.action_function||'')}', ${workflowID}, ${version}, ${r.rule_conditions && r.rule_conditions.length ? true : false})"
                           title="Edit">
                           <i class="fa-solid fa-pen"></i>
                         </button>
@@ -123,13 +123,8 @@ export function viewDetails(workflowID) {
                           <i class="fa-solid fa-trash"></i>
                         </button>
 
-                        <button class="icon-btn cond-add" type="button"
-                          onclick="event.stopPropagation(); addConditionPrompt(${r.rule_id}, ${workflowID}, ${version})" title="Add condition">
-                          <i class="fa-solid fa-plus-circle"></i>
-                        </button>
-
                         <button class="icon-btn" onclick="event.stopPropagation(); toggleRuleConditions(${r.rule_id})" title="Toggle conditions">
-                          <i class="fa-solid fa-filter"></i>
+                          <i class="fa-solid fa-plus" id="icon_plus_${r.rule_id}" style="transform: rotate(${r.rule_conditions && r.rule_conditions.length ? '45deg' : '0deg'}); transition: transform 0.2s;"></i>
                         </button>
                       </td>
                     </tr>
@@ -145,11 +140,10 @@ export function viewDetails(workflowID) {
                                 <div class="cond-meta">
                                   <div class="cond-left">
                                     <span>${escapeHtml(rc.rule_condition_type || '')}</span>
-                                    ${rc.active_workflows_using ? `<span style="margin-left:8px;color:#8b8f99">· ${escapeHtml(rc.active_workflows_using)}</span>` : ''}
                                   </div>
                                   <div class="cond-actions">
-                                    <button class="icon-btn cond" title="Edit condition" onclick="event.stopPropagation(); editConditionPrompt(${rc.rule_condition_id}, ${r.rule_id})"><i class="fa-solid fa-pen"></i></button>
-                                    <button class="icon-btn cond" title="Delete condition" onclick="event.stopPropagation(); deleteCondition(${rc.rule_condition_id}, ${r.rule_id})"><i class="fa-solid fa-trash"></i></button>
+                                    <button class="icon-btn cond" title="Edit condition" onclick="event.stopPropagation(); editRuleCondition(${rc.wf_rule_condition_id}, ${rc.rule_condition_id}, ${r.rule_id}, ${rc.wf_condition_id}, '${rc.wf_condition_func_name}', '${rc.wf_condition_description}', '${rc.rule_condition_type}', ${workflowID}, ${version})"><i class="fa-solid fa-pen"></i></button>
+                                    <button class="icon-btn cond" title="Delete condition" onclick="event.stopPropagation(); deleteRuleCondition(${rc.wf_rule_condition_id}, ${workflowID}, ${version})"><i class="fa-solid fa-trash"></i></button>
                                   </div>
                                 </div>
                               </div>
@@ -159,7 +153,7 @@ export function viewDetails(workflowID) {
 
                           <!-- add condition quick button -->
                           <div style="align-self:flex-start; margin-left:6px;">
-                            <button class="cond-add-btn" onclick="event.stopPropagation(); addConditionPrompt(${r.rule_id}, ${workflowID}, ${version})">
+                            <button class="cond-add-btn" onclick="event.stopPropagation(); addRuleConditionPrompt(${r.rule_id}, ${workflowID}, ${version})">
                               <i class="fa-solid fa-plus-circle" style="margin-right:6px"></i>
                               Add condition
                             </button>
@@ -386,12 +380,4 @@ export function loadLookups() {
     .catch(err => console.error("Error fetching conditions lookup:", err));
 }
 
-window.toggleRuleConditions = function(ruleID) {
-  const wrapper = document.getElementById(`rule_conditions_wrapper_${ruleID}`);
-  if (!wrapper) return;
-  if (wrapper.style.display == 'none') {
-    wrapper.style.display = 'table-row'
-  } else {
-    wrapper.style.display = 'none';
-  }
-};
+
