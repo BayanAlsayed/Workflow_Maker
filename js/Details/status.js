@@ -38,8 +38,10 @@ export function createStatus(e, workflowID, version) {
   })
   .then(r => { if (!r.ok) throw new Error('Failed to create status'); })
   .then(() => {
-    const wfid = new URLSearchParams(window.location.search).get('workflow');
-    if (wfid) window.viewDetails(wfid);
+    const params = new URLSearchParams(window.location.search);
+    const openWFID = params.get('workflow');
+    const openWFVersion = params.get('version')
+    if (openWFID && openWFVersion) window.viewDetails(openWFID, openWFVersion);
   })
   .catch(err => console.error('Error creating status:', err));
 }
@@ -190,8 +192,10 @@ export function saveStatus(statusID, workflowID, version) {
   fetch(`/edit_status?${params.toString()}`, { method: 'GET', headers: { 'Cache-Control': 'no-cache' } })
     .then(r => { if (!r.ok) throw new Error("Failed to update status"); return r.json(); })
     .then(() => {
-      const wfid = new URLSearchParams(window.location.search).get('workflow');
-      if (wfid) window.viewDetails(wfid);
+      const params = new URLSearchParams(window.location.search);
+      const openWFID = params.get('workflow');
+      const openWFVersion = params.get('version')
+      if (openWFID && openWFVersion) window.viewDetails(openWFID, openWFVersion);
     })
     .catch(err => console.error("Error updating status:", err));
 }
@@ -230,8 +234,10 @@ export function deleteStatus(statusID, workflowID, version) {
   fetch(`/delete_status?status_id=${statusID}&workflow_id=${workflowID}&version=${version}`)
     .then(r => { if (!r.ok) throw new Error('Failed'); })
     .then(() => {
-      const wfid = new URLSearchParams(window.location.search).get('workflow');
-      if (wfid) window.viewDetails(wfid);
+      const params = new URLSearchParams(window.location.search);
+      const openWFID = params.get('workflow');
+      const openWFVersion = params.get('version')
+      if (openWFID && openWFVersion) window.viewDetails(openWFID, openWFVersion);
     })
     .catch(err => console.error("Error deleting status:", err));
 }

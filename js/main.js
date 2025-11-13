@@ -1,9 +1,10 @@
 window.addEventListener('DOMContentLoaded', () => {
   const params = new URLSearchParams(window.location.search);
-  const openID = params.get('workflow');
+  const openWFID = params.get('workflow');
+  const openWFVersion = params.get('version')
   loadLookups();
-  if (openID) {
-    viewDetails(openID);
+  if (openWFID) {
+    viewDetails(openWFID, openWFVersion);
   }
 });
 

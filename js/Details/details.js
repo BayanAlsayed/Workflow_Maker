@@ -11,8 +11,8 @@ export let WF_STATUSES = [];
 
 
 window.viewDetails = viewDetails;
-export function viewDetails(workflowID) {
-  history.pushState({}, '', `?workflow=${workflowID}`);
+export function viewDetails(workflowID, version) {
+  
 
   const container = document.getElementById('main_container');
   container.innerHTML = '';
@@ -21,20 +21,56 @@ export function viewDetails(workflowID) {
   fetch(`/get_workflow_versions/${workflowID}`)
     .then(r => { if (!r.ok) throw new Error("Failed to fetch workflow version"); return r.json(); })
     .then(versions => {
+      if (version > 0) {
+        history.pushState({}, '', `?workflow=${workflowID}&version=${version}`);     
+      } else if (versions.filter(v => v.is_active).length > 0){
+        version = versions.find(v => v.is_active).version;
+        history.pushState({}, '', `?workflow=${workflowID}&version=${versions.find(v => v.is_active).version}`);     
+      } else {
+        version = versions[0].version
+        history.pushState({}, '', `?workflow=${workflowID}&version=${versions[0].version}`);     
+      }
+
       if (versions.length > 0) {
         const versionsSelect = `
           <label for="version_sel">Version:
-            <select id="version_sel" onchange="viewDetails(${workflowID})">
+            <select id="version_sel" onchange="viewDetails(${workflowID}, this.value)">
               ${versions.map(v => 
-                `<option value="${v.version}" ${v.is_active ? 'selected' : ''}>
+                `<option value="${v.version}" ${v.version == version ? 'selected' : ''}>
                   ${v.version} ${v.is_active ? '(Active)' : v.is_approved ? '(Approved)' : ''}
                 </option>`).join('')}
             </select>
           </label>
+          <button id="create_workflow_version_button" onclick="createWorkflowVersion(${workflowID})">create version</button>
+          <button id="duplicate_workflow_version_button" onclick="duplicateWorkflowVersion(${workflowID}, ${version})">duplicate version</button>
         `;
 
         container.innerHTML = versionsSelect;
-        var version = document.getElementById("version_sel").value || versions[0].version
+        // var version = document.getElementById("version_sel").value || versions[0].version
+
+        const versionData = versions?.find(v => String(v.version) === String(version));
+        if (versionData && versionData.is_active) {
+          // active version - no activate button
+        } else  if (versionData && versionData.is_approved) {
+          const versionActivateBtn = `
+            <button id="activate_version_btn" class="btn primary" onclick="activateWorkflowVersion(${workflowID}, ${version})">
+              Activate Version
+            </button>
+          `;
+          container.insertAdjacentHTML('beforeend', versionActivateBtn);
+        } else  if (versionData) {
+          const versionApproveBtn = `
+            <button id="approve_version_btn" class="btn primary" onclick="approveWorkflowVersion(${workflowID}, ${version})">
+              Approve Version
+            </button>
+            <button id="delete_version_btn" class="btn primary" onclick="deleteWorkflowVersion(${workflowID}, ${version})">
+              Delete Version
+            </button>
+          `;
+          container.insertAdjacentHTML('beforeend', versionApproveBtn);
+        } else {
+          console.warn('Version not found in versions list:', version);
+        }
 
         fetch(`/view_workflow/${workflowID}/${version}`)
           .then(r => { if (!r.ok) throw new Error("Failed to fetch workflow details"); return r.json(); })
@@ -67,13 +103,15 @@ export function viewDetails(workflowID) {
                       <td>
                         <button class="icon-btn edit" type="button"
                           onclick="event.stopPropagation(); editStatus(${s.status_id}, '${escapeHtml(s.status_name)}', ${s.ed_code_status_id ?? 'null'}, '${escapeHtml(nullable(s.ed_descr_en)||'')}', ${s.gs_code_req_status_id ?? 'null'}, '${escapeHtml(nullable(s.gs_descr_en)||'')}', ${s.is_terminal?1:0}, ${s.success_path==null?'null':Number(s.success_path)}, ${workflowID}, ${version})"
-                          title="Edit">
+                          title="Edit"
+                          ${versionData && versionData.is_approved ? 'disabled' : ''}>
                           <i class="fa-solid fa-pen"></i>
                         </button>
 
                         <button class="icon-btn delete" type="button"
                           onclick="event.stopPropagation(); deleteStatus(${s.status_id}, ${workflowID}, ${version})"
-                          title="Delete">
+                          title="Delete"
+                          ${versionData && versionData.is_approved ? 'disabled' : ''}>
                           <i class="fa-solid fa-trash"></i>
                         </button>
                       </td>
@@ -113,13 +151,15 @@ export function viewDetails(workflowID) {
                       <td>
                         <button class="icon-btn edit" type="button"
                           onclick="event.stopPropagation(); editRule(${r.rule_id}, ${r.from_status_id}, '${escapeHtml(nullable(r.from_status_name)||'')}', ${r.to_status_id}, '${escapeHtml(nullable(r.to_status_name)||'')}', ${r.se_code_user_type_id ?? 'null'}, '${escapeHtml(nullable(r.user_type_en)||'')}', ${r.se_accnt_id ?? 'null'}, '${escapeHtml(nullable(r.accnt_en)||'')}', '${escapeHtml(r.action_button||'')}', '${escapeHtml(r.action_function||'')}', ${workflowID}, ${version}, ${r.rule_conditions && r.rule_conditions.length ? true : false})"
-                          title="Edit">
+                          title="Edit"
+                          ${versionData && versionData.is_approved ? 'disabled' : ''}>
                           <i class="fa-solid fa-pen"></i>
                         </button>
 
                         <button class="icon-btn delete" type="button"
                           onclick="event.stopPropagation(); deleteRule(${r.rule_id}, ${workflowID}, ${version})"
-                          title="Delete">
+                          title="Delete"
+                          ${versionData && versionData.is_approved ? 'disabled' : ''}>
                           <i class="fa-solid fa-trash"></i>
                         </button>
 
@@ -142,8 +182,14 @@ export function viewDetails(workflowID) {
                                     <span>${escapeHtml(rc.rule_condition_type || '')}</span>
                                   </div>
                                   <div class="cond-actions">
-                                    <button class="icon-btn cond" title="Edit condition" onclick="event.stopPropagation(); editRuleCondition(${rc.wf_rule_condition_id}, ${rc.rule_condition_id}, ${r.rule_id}, ${rc.wf_condition_id}, '${rc.wf_condition_func_name}', '${rc.wf_condition_description}', '${rc.rule_condition_type}', ${workflowID}, ${version})"><i class="fa-solid fa-pen"></i></button>
-                                    <button class="icon-btn cond" title="Delete condition" onclick="event.stopPropagation(); deleteRuleCondition(${rc.wf_rule_condition_id}, ${workflowID}, ${version})"><i class="fa-solid fa-trash"></i></button>
+                                    <button class="icon-btn cond" title="Edit condition" 
+                                    onclick="event.stopPropagation(); editRuleCondition(${rc.wf_rule_condition_id}, ${rc.rule_condition_id}, ${r.rule_id}, ${rc.wf_condition_id}, '${rc.wf_condition_func_name}', '${rc.wf_condition_description}', '${rc.rule_condition_type}', ${workflowID}, ${version})"
+                                    ${versionData && versionData.is_approved ? 'disabled' : ''}>
+                                    <i class="fa-solid fa-pen"></i></button>
+                                    <button class="icon-btn cond" title="Delete condition" 
+                                    onclick="event.stopPropagation(); deleteRuleCondition(${rc.wf_rule_condition_id}, ${workflowID}, ${version})"
+                                    ${versionData && versionData.is_approved ? 'disabled' : ''}>
+                                    <i class="fa-solid fa-trash"></i></button>
                                   </div>
                                 </div>
                               </div>
@@ -153,7 +199,9 @@ export function viewDetails(workflowID) {
 
                           <!-- add condition quick button -->
                           <div style="align-self:flex-start; margin-left:6px;">
-                            <button class="cond-add-btn" onclick="event.stopPropagation(); addRuleConditionPrompt(${r.rule_id}, ${workflowID}, ${version})">
+                            <button class="cond-add-btn" 
+                            onclick="event.stopPropagation(); addRuleConditionPrompt(${r.rule_id}, ${workflowID}, ${version})"
+                            ${versionData && versionData.is_approved ? 'disabled' : ''}>
                               <i class="fa-solid fa-plus-circle" style="margin-right:6px"></i>
                               Add condition
                             </button>
@@ -168,7 +216,7 @@ export function viewDetails(workflowID) {
             `;
 
             // Add forms with <select> (Tom Select will attach)
-            const statusFormsHTML = `
+            const statusFormsHTML = versionData && !versionData.is_approved ? `
               <div class="wf-create">
                 <h3>Add Status</h3>
                 <form id="add-status-form" onsubmit="createStatus(event, ${workflowID}, ${version})">
@@ -208,9 +256,9 @@ export function viewDetails(workflowID) {
                   </div>
                   <button type="submit" class="btn primary">Create Status</button>
                 </form>
-              </div>`;
+              </div>`: ``;
 
-            const ruleFormsHTML = `
+            const ruleFormsHTML = versionData && !versionData.is_approved ? `
               <div class="wf-create">
                 <h3>Add Rule</h3>
                 <form id="add-rule-form" onsubmit="createRule(event, ${workflowID}, ${version})">
@@ -249,7 +297,7 @@ export function viewDetails(workflowID) {
                   </div>
                   <button type="submit" class="btn primary">Create Rule</button>
                 </form>
-              </div>`;
+              </div>`: ``;
 
             container.innerHTML += statusesTable + statusFormsHTML + rulesTable + ruleFormsHTML;
           })

@@ -140,7 +140,7 @@ export function editRuleCondition(wf_rule_condition_id, rule_condition_id, rule_
             </span>
             </div>
             <div class="cond-actions">
-            <button class="icon-btn cond" title="save rule condition" onclick="event.stopPropagation(); saveRuleCondition(${wf_rule_condition_id}, ${workflowID})"><i class="fa-solid fa-check"></i></button>
+            <button class="icon-btn cond" title="save rule condition" onclick="event.stopPropagation(); saveRuleCondition(${wf_rule_condition_id}, ${rule_condition_id}, ${workflowID}, ${version})"><i class="fa-solid fa-check"></i></button>
             <button class="icon-btn cond" title="cancel edit" onclick="event.stopPropagation(); cancelRuleConditionEdit(${wf_rule_condition_id}, ${rule_condition_id}, ${rule_id}, ${wf_condition_id}, '${func_name}', '${description}', '${type}', ${workflowID}, ${version})"><i class="fa-solid fa-xmark"></i></button>
             </div>
         </div>
@@ -176,9 +176,10 @@ export function cancelRuleConditionEdit(wf_rule_condition_id, rule_condition_id,
 }
 
 window.saveRuleCondition = saveRuleCondition;
-export function saveRuleCondition(wf_rule_condition_id, workflow_id) {
-    const formId = `edit_rule_condition_form_${wf_rule_condition_id}`;
+export function saveRuleCondition(wf_rule_condition_id, rule_condition_id, workflow_id, version) {
+    const formId = `edit_rule_condition_form_${rule_condition_id}`;
     const form = document.getElementById(formId);
+    if (!form ) return console.error('edit_rule_condition_form is not found');
     const formData = new FormData(form);
 
     const params = new URLSearchParams({
@@ -191,7 +192,7 @@ export function saveRuleCondition(wf_rule_condition_id, workflow_id) {
     fetch(`/edit_rule_condition?${params.toString()}`)
     .then(r => { if (!r.ok) throw new Error('Failed to save rule condition'); })
     .then(() => {
-        viewDetails(workflow_id);
+        viewDetails(workflow_id, version);
     })
     .catch(err => console.error('Error saving rule condition:', err));
 }

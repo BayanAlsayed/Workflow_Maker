@@ -28,8 +28,10 @@ export function createRule(e, workflowID, version) {
   })
   .then(r => { if (!r.ok) throw new Error('Failed to create rule'); })
   .then(() => {
-    const wfid = new URLSearchParams(window.location.search).get('workflow');
-    if (wfid) window.viewDetails(wfid);
+    const params = new URLSearchParams(window.location.search);
+    const openWFID = params.get('workflow');
+    const openWFVersion = params.get('version')
+    if (openWFID && openWFVersion) window.viewDetails(openWFID, openWFVersion);
   })
   .catch(err => console.error('Error creating rule:', err));
 }
@@ -125,8 +127,10 @@ export function deleteRule(rule_id, workflowID, version) {
   fetch(`/delete_rule?rule_id=${rule_id}&workflow_id=${workflowID}&version=${version}`)
     .then(r => { if (!r.ok) throw new Error('Failed'); })
     .then(() => {
-      const wfid = new URLSearchParams(window.location.search).get('workflow');
-      if (wfid) window.viewDetails(wfid);
+      const params = new URLSearchParams(window.location.search);
+      const openWFID = params.get('workflow');
+      const openWFVersion = params.get('version')
+      if (openWFID && openWFVersion) window.viewDetails(openWFID, openWFVersion);
     })
     .catch(err => console.error("Error deleting rule:", err));
 }
@@ -152,8 +156,10 @@ export function saveRule(rule_id, workflowID, version){
   fetch(`/edit_rule?${params.toString()}`, { method:'GET', headers:{'Cache-Control':'no-cache'} })
     .then(r => { if (!r.ok) throw new Error("Failed to update rule"); return r.json(); })
     .then(() => {
-      const wfid = new URLSearchParams(window.location.search).get('workflow');
-      if (wfid) window.viewDetails(wfid);
+      const params = new URLSearchParams(window.location.search);
+      const openWFID = params.get('workflow');
+      const openWFVersion = params.get('version')
+      if (openWFID && openWFVersion) window.viewDetails(openWFID, openWFVersion);
     })
     .catch(err => console.error("Error updating rule:", err));
 }

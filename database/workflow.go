@@ -1,7 +1,5 @@
 package database
 
-import "database/sql"
-
 type Workflow struct {
 	WORKFLOW_ID          int    `json:"workflow_id"`
 	WORKFLOW_NAME        string `json:"workflow_name"`
@@ -60,8 +58,8 @@ func AddWorkflow(wf Workflow) (int64, error) {
 	// 2) Insert initial version as latest (v1)
 	// For a brand-new workflow, v1 is always correct.
 	_, err = tx.Exec(`
-		INSERT INTO WF_VERSION (WORKFLOW_ID, VERSION, IS_LATEST)
-		VALUES (?, 1, 1)
+		INSERT INTO WF_VERSION (WORKFLOW_ID, VERSION, IS_ACTIVE, IS_APPROVED)
+		VALUES (?, 1, 0, 0)
 	`, workflowID)
 	if err != nil {
 		return 0, err
@@ -108,47 +106,5 @@ func UpdateWorkflow(wf Workflow) error {
 	return err
 }
 
-func AddVersion(workflowID int) (int64, error) {
-	tx, err := db.Begin()
-	if err != nil {
-		return 0, err
-	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
-		}
-	}()
 
-	// Mark all old versions as not latest
-	if _, err = tx.Exec(`UPDATE WF_VERSION SET IS_LATEST = 0 WHERE WORKFLOW_ID = ?`, workflowID); err != nil {
-		return 0, err
-	}
-
-	// Compute next version (1 if none exist)
-	var maxVersion sql.NullInt64
-	if err = tx.QueryRow(`SELECT MAX(VERSION) FROM WF_VERSION WHERE WORKFLOW_ID = ?`, workflowID).Scan(&maxVersion); err != nil && err != sql.ErrNoRows {
-		return 0, err
-	}
-	next := 1
-	if maxVersion.Valid {
-		next = int(maxVersion.Int64) + 1
-	}
-
-	res, err := tx.Exec(`
-		INSERT INTO WF_VERSION (WORKFLOW_ID, VERSION, IS_LATEST)
-		VALUES (?, ?, 1)
-	`, workflowID, next)
-	if err != nil {
-		return 0, err
-	}
-
-	newID, err := res.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-	if err = tx.Commit(); err != nil {
-		return 0, err
-	}
-	return newID, nil
-}
 

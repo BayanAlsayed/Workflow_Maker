@@ -10,13 +10,18 @@ import (
 )
 
 func main() {
-	db, err := sql.Open("sqlite3", "./database/workflow.db")
+	db, err := sql.Open("sqlite3", "./database/workflow.db?_foreign_keys=1")
 	if err != nil {
 
 		fmt.Println("Failed to open database connection: ", err)
 		return
 	}
 	defer db.Close()
+
+	if _, err := db.Exec(`PRAGMA foreign_keys = ON;`); err != nil {
+		fmt.Println("failed enabling foreign keys:", err)
+		return
+	}
 
 	database.SetDB(db)
 	err = database.CreateTables()
@@ -57,10 +62,15 @@ func main() {
 	mux.HandleFunc("/edit_workflow", server.EditWorkflowHandler)
 
 	mux.HandleFunc("/get_workflow_versions/", server.GetWorkflowVersionsHandler)
+	mux.HandleFunc("/activate_workflow_version", server.ActivateWorkflowVersionHandler)
+	mux.HandleFunc("/approve_workflow_version", server.ApproveWorkflowVersionHandler)
+	mux.HandleFunc("/delete_workflow_version", server.DeleteWorkflowVersionHandler)
+	mux.HandleFunc("/create_workflow_version", server.CreateWorkflowVersionHandler)
+	mux.HandleFunc("/duplicate_workflow_version", server.DuplicateWorkflowVersionHandler)
+
 	mux.HandleFunc("/view_workflow/", server.ViewDetailsHandler)
 	mux.HandleFunc("/lookups", server.LookupsHandler)
 	mux.HandleFunc("/wf_lookups/", server.WFLookupsHandler)
-
 
 	mux.HandleFunc("/add_status", server.AddStatusHandler)
 	mux.HandleFunc("/edit_status", server.EditStatusHandler)
@@ -76,7 +86,6 @@ func main() {
 
 	mux.HandleFunc("/view_conditions", server.ViewConditionsHandler)
 	mux.HandleFunc("/add_condition", server.AddConditionHandler)
-
 
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static/"))))
 	mux.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("./js/"))))

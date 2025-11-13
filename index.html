@@ -13,8 +13,6 @@
       crossorigin="anonymous"
       referrerpolicy="no-referrer"
     />
-  <script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.2/dist/js/tom-select.complete.min.js"></script>
-
 
 </head>
 <body id="app">
@@ -26,7 +24,7 @@
       <div class="list-header">Workflows</div>
       {{if .}}
         {{range .}}
-          <div class="item" id="workflow_{{.WORKFLOW_ID}}" onclick="viewDetails({{.WORKFLOW_ID}})">
+          <div class="item" id="workflow_{{.WORKFLOW_ID}}" onclick="viewDetails({{.WORKFLOW_ID}}, 0)">
             <div class="item-info" id="workflow_info_{{.WORKFLOW_ID}}">
               <div class="item-name">{{.WORKFLOW_NAME}}</div>
               {{if .WORKFLOW_DESCRIPTION}}<div class="item-desc">{{.WORKFLOW_DESCRIPTION}}</div>{{end}}
@@ -81,14 +79,17 @@
     </div> -->
     <div class="main_container" id="main_container" style="display: none;"></div>
   </main>
-<script src="./js/main.js"></script>
-<script type="module">
+<script defer src="https://cdn.jsdelivr.net/npm/tom-select@2.4.2/dist/js/tom-select.complete.min.js"></script>
+<script defer src="./js/main.js"></script>
+<script defer type="module">
     import { deleteWorkflow, editWorkflow, saveWorkflow, cancelEdit } from "./js/workflow.js";
+    import { activateWorkflowVersion, approveWorkflowVersion, createWorkflowVersion } from "./js/Details/version.js";
     import { viewDetails, SE_CODE_USER_TYPE, SE_ACCNT } from "./js/Details/details.js";
     import { createRule, editRule, deleteRule, saveRule, cancelRuleEdit } from "./js/Details/rule.js";
     import { createStatus, getCat, isEdinCat, updateEdCodes, editStatus, saveStatus, cancelStatusEdit } from "./js/Details/status.js";
     import { viewConditions, createCondition } from "./js/Details/condition.js";
     import { addRuleCondition, toggleRuleConditions, addRuleConditionPrompt, cancelRuleConditionPrompt } from "./js/Details/rule_condition.js";
+
 </script>
 </body>
 </html>
